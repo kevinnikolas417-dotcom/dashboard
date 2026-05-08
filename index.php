@@ -1,69 +1,38 @@
 from pathlib import Path
-import zipfile, shutil
+import zipfile
 
-base = Path("/mnt/data/painel_do_zero_usuario_admin_empresas")
-if base.exists():
-    shutil.rmtree(base)
-base.mkdir()
-
-php = r'''<?php
+php = """<?php
 session_start();
 
 /*
 |--------------------------------------------------------------------------
 | PAINEL DE ACESSO - ADMIN / USUÁRIO / EMPRESAS
 |--------------------------------------------------------------------------
-| Fluxo:
-|
-| 1. Usuário cria conta com e-mail e senha pessoal.
-| 2. Conta fica pendente.
-| 3. Admin acessa o painel.
-| 4. Admin aprova o usuário.
-| 5. Admin define se o usuário será "admin" ou "usuario".
-| 6. Admin escolhe quais empresas o usuário poderá acessar.
-| 7. Usuário comum visualiza somente as empresas liberadas para ele.
-|
 | Admin inicial:
 | E-mail: kevinnikolas417@gmail.com
 | Senha: 123456
+|
+| Fluxo:
+| 1. Usuário cria conta com e-mail e senha pessoal.
+| 2. Conta fica pendente.
+| 3. Admin aprova o usuário.
+| 4. Admin define se será admin ou usuário.
+| 5. Admin escolhe as empresas que o usuário poderá acessar.
+| 6. Usuário comum visualiza somente as empresas liberadas.
 |--------------------------------------------------------------------------
 */
 
-/*
-|--------------------------------------------------------------------------
-| CONFIGURAÇÃO DE ARQUIVOS
-|--------------------------------------------------------------------------
-*/
+$DATA_DIR = __DIR__ . '/data';
+$USERS_FILE = $DATA_DIR . '/usuarios.json';
 
-$PASTA_DADOS = __DIR__ . '/data';
-$ARQUIVO_USUARIOS = $PASTA_DADOS . '/usuarios.json';
-
-if (!is_dir($PASTA_DADOS)) {
-    mkdir($PASTA_DADOS, 0755, true);
+if (!is_dir($DATA_DIR)) {
+    mkdir($DATA_DIR, 0755, true);
 }
 
-/*
-|--------------------------------------------------------------------------
-| DADOS DAS EMPRESAS, CAMPANHAS E ANÚNCIOS
-|--------------------------------------------------------------------------
-*/
-
 $periodos = array(
-    '7' => array(
-        'nome' => 'Últimos 7 dias',
-        'inicio' => '1 de maio de 2026',
-        'fim' => '7 de maio de 2026'
-    ),
-    '15' => array(
-        'nome' => 'Últimos 15 dias',
-        'inicio' => '23 de abril de 2026',
-        'fim' => '7 de maio de 2026'
-    ),
-    '30' => array(
-        'nome' => 'Últimos 30 dias',
-        'inicio' => '8 de abril de 2026',
-        'fim' => '7 de maio de 2026'
-    )
+    '7' => array('nome' => 'Últimos 7 dias', 'inicio' => '1 de maio de 2026', 'fim' => '7 de maio de 2026'),
+    '15' => array('nome' => 'Últimos 15 dias', 'inicio' => '23 de abril de 2026', 'fim' => '7 de maio de 2026'),
+    '30' => array('nome' => 'Últimos 30 dias', 'inicio' => '8 de abril de 2026', 'fim' => '7 de maio de 2026')
 );
 
 $empresas = array(
@@ -71,7 +40,7 @@ $empresas = array(
         'slug' => 'parisviu',
         'nome' => 'PARISVIU',
         'status' => 'Ativa',
-        'descricao' => 'Empresa ativa com campanhas de reconhecimento e anúncios em veiculação.',
+        'descricao' => 'Empresa ativa com campanhas e anúncios em veiculação.',
         'campanhas' => array(
             array(
                 'slug' => 'campanha-0010-nova-parisviu',
@@ -79,22 +48,8 @@ $empresas = array(
                 'nome' => '[CAMPANHA0010] [NOVA PARISVIU] [RECONHECIMENTO]',
                 'orcamento_diario' => 20.00,
                 'anuncios' => array(
-                    array(
-                        'id' => '120244842311700764',
-                        'nome' => '[ADD001] [CARROSSEL]',
-                        'plataforma' => 'facebook',
-                        'gasto' => 1.81,
-                        'alcance' => 1182,
-                        'impressoes' => 1242
-                    ),
-                    array(
-                        'id' => '120244842239980764',
-                        'nome' => '[ADD002] [CARROSSEL]',
-                        'plataforma' => 'instagram',
-                        'gasto' => 1.85,
-                        'alcance' => 1456,
-                        'impressoes' => 1456
-                    )
+                    array('id' => '120244842311700764', 'nome' => '[ADD001] [CARROSSEL]', 'plataforma' => 'facebook', 'gasto' => 1.81, 'alcance' => 1182, 'impressoes' => 1242),
+                    array('id' => '120244842239980764', 'nome' => '[ADD002] [CARROSSEL]', 'plataforma' => 'instagram', 'gasto' => 1.85, 'alcance' => 1456, 'impressoes' => 1456)
                 )
             ),
             array(
@@ -103,22 +58,8 @@ $empresas = array(
                 'nome' => '[CAMPANHA0009] [HISTORIA PARISVIU] [RECONHECIMENTO]',
                 'orcamento_diario' => 20.00,
                 'anuncios' => array(
-                    array(
-                        'id' => '120244841964610764',
-                        'nome' => '[ADD001] [VÍDEO]',
-                        'plataforma' => 'facebook',
-                        'gasto' => 1.87,
-                        'alcance' => 1053,
-                        'impressoes' => 1163
-                    ),
-                    array(
-                        'id' => '120244841917760764',
-                        'nome' => '[ADD001] [VÍDEO]',
-                        'plataforma' => 'instagram',
-                        'gasto' => 2.13,
-                        'alcance' => 1567,
-                        'impressoes' => 1579
-                    )
+                    array('id' => '120244841964610764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'facebook', 'gasto' => 1.87, 'alcance' => 1053, 'impressoes' => 1163),
+                    array('id' => '120244841917760764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.13, 'alcance' => 1567, 'impressoes' => 1579)
                 )
             ),
             array(
@@ -127,22 +68,8 @@ $empresas = array(
                 'nome' => '[CAMPANHA0008] [ÓCUL PRTS NA HORA]',
                 'orcamento_diario' => 20.00,
                 'anuncios' => array(
-                    array(
-                        'id' => '120244841775000764',
-                        'nome' => '[ADD002] [VÍDEO]',
-                        'plataforma' => 'facebook',
-                        'gasto' => 2.18,
-                        'alcance' => 1436,
-                        'impressoes' => 1512
-                    ),
-                    array(
-                        'id' => '120244841168570764',
-                        'nome' => '[ADD002] [VÍDEO]',
-                        'plataforma' => 'instagram',
-                        'gasto' => 2.17,
-                        'alcance' => 1593,
-                        'impressoes' => 1593
-                    )
+                    array('id' => '120244841775000764', 'nome' => '[ADD002] [VÍDEO]', 'plataforma' => 'facebook', 'gasto' => 2.18, 'alcance' => 1436, 'impressoes' => 1512),
+                    array('id' => '120244841168570764', 'nome' => '[ADD002] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.17, 'alcance' => 1593, 'impressoes' => 1593)
                 )
             ),
             array(
@@ -151,49 +78,15 @@ $empresas = array(
                 'nome' => '[CAMP0007] [ÓCULOS 99,90] [MICRO]',
                 'orcamento_diario' => 40.00,
                 'anuncios' => array(
-                    array(
-                        'id' => '120244842110540764',
-                        'nome' => '[ADD002] [VÍDEO]',
-                        'plataforma' => 'facebook',
-                        'gasto' => 2.15,
-                        'alcance' => 1448,
-                        'impressoes' => 1500
-                    ),
-                    array(
-                        'id' => '120244842071230764',
-                        'nome' => '[ADD004] [CARROSSEL]',
-                        'plataforma' => 'facebook',
-                        'gasto' => 0.43,
-                        'alcance' => 16,
-                        'impressoes' => 18
-                    ),
-                    array(
-                        'id' => '120244842031390764',
-                        'nome' => '[ADD003] [CARROSSEL]',
-                        'plataforma' => 'instagram',
-                        'gasto' => 0.20,
-                        'alcance' => 6,
-                        'impressoes' => 6
-                    ),
-                    array(
-                        'id' => '120244828194770764',
-                        'nome' => '[ADD001] [VÍDEO]',
-                        'plataforma' => 'instagram',
-                        'gasto' => 2.40,
-                        'alcance' => 1770,
-                        'impressoes' => 1820
-                    )
+                    array('id' => '120244842110540764', 'nome' => '[ADD002] [VÍDEO]', 'plataforma' => 'facebook', 'gasto' => 2.15, 'alcance' => 1448, 'impressoes' => 1500),
+                    array('id' => '120244842071230764', 'nome' => '[ADD004] [CARROSSEL]', 'plataforma' => 'facebook', 'gasto' => 0.43, 'alcance' => 16, 'impressoes' => 18),
+                    array('id' => '120244842031390764', 'nome' => '[ADD003] [CARROSSEL]', 'plataforma' => 'instagram', 'gasto' => 0.20, 'alcance' => 6, 'impressoes' => 6),
+                    array('id' => '120244828194770764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.40, 'alcance' => 1770, 'impressoes' => 1820)
                 )
             )
         )
     )
 );
-
-/*
-|--------------------------------------------------------------------------
-| FUNÇÕES BÁSICAS
-|--------------------------------------------------------------------------
-*/
 
 function esc($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -207,16 +100,16 @@ function numero($valor) {
     return number_format((int)$valor, 0, ',', '.');
 }
 
-function plataforma_nome($plataforma) {
-    if ($plataforma == 'facebook') {
+function plataforma_nome($valor) {
+    if ($valor == 'facebook') {
         return 'Facebook';
     }
 
-    if ($plataforma == 'instagram') {
+    if ($valor == 'instagram') {
         return 'Instagram';
     }
 
-    return ucfirst($plataforma);
+    return ucfirst($valor);
 }
 
 function tipo_criativo($nome) {
@@ -233,25 +126,19 @@ function tipo_criativo($nome) {
     return 'CRIATIVO';
 }
 
-/*
-|--------------------------------------------------------------------------
-| FUNÇÕES DE USUÁRIOS
-|--------------------------------------------------------------------------
-*/
-
 function carregar_usuarios($arquivo) {
     if (!file_exists($arquivo)) {
         return array();
     }
 
     $conteudo = file_get_contents($arquivo);
-    $usuarios = json_decode($conteudo, true);
+    $dados = json_decode($conteudo, true);
 
-    if (!is_array($usuarios)) {
+    if (!is_array($dados)) {
         return array();
     }
 
-    return $usuarios;
+    return $dados;
 }
 
 function salvar_usuarios($arquivo, $usuarios) {
@@ -261,10 +148,7 @@ function salvar_usuarios($arquivo, $usuarios) {
 function buscar_usuario_email($usuarios, $email) {
     foreach ($usuarios as $indice => $usuario) {
         if (strtolower($usuario['email']) == strtolower($email)) {
-            return array(
-                'indice' => $indice,
-                'usuario' => $usuario
-            );
+            return array('indice' => $indice, 'usuario' => $usuario);
         }
     }
 
@@ -274,10 +158,7 @@ function buscar_usuario_email($usuarios, $email) {
 function buscar_usuario_id($usuarios, $id) {
     foreach ($usuarios as $indice => $usuario) {
         if ((string)$usuario['id'] == (string)$id) {
-            return array(
-                'indice' => $indice,
-                'usuario' => $usuario
-            );
+            return array('indice' => $indice, 'usuario' => $usuario);
         }
     }
 
@@ -286,16 +167,16 @@ function buscar_usuario_id($usuarios, $id) {
 
 function criar_admin_inicial($arquivo) {
     $usuarios = carregar_usuarios($arquivo);
-    $admin_existe = false;
+    $existe = false;
 
     foreach ($usuarios as $usuario) {
         if (strtolower($usuario['email']) == 'kevinnikolas417@gmail.com') {
-            $admin_existe = true;
+            $existe = true;
             break;
         }
     }
 
-    if (!$admin_existe) {
+    if (!$existe) {
         $usuarios[] = array(
             'id' => uniqid('user_'),
             'email' => 'kevinnikolas417@gmail.com',
@@ -309,12 +190,6 @@ function criar_admin_inicial($arquivo) {
         salvar_usuarios($arquivo, $usuarios);
     }
 }
-
-/*
-|--------------------------------------------------------------------------
-| FUNÇÕES DE EMPRESAS E CAMPANHAS
-|--------------------------------------------------------------------------
-*/
 
 function buscar_empresa($empresas, $slug) {
     foreach ($empresas as $empresa) {
@@ -337,12 +212,7 @@ function buscar_campanha($campanhas, $slug) {
 }
 
 function totais_campanha($campanha) {
-    $total = array(
-        'gasto' => 0,
-        'alcance' => 0,
-        'impressoes' => 0,
-        'anuncios' => 0
-    );
+    $total = array('gasto' => 0, 'alcance' => 0, 'impressoes' => 0, 'anuncios' => 0);
 
     foreach ($campanha['anuncios'] as $anuncio) {
         $total['gasto'] += $anuncio['gasto'];
@@ -355,13 +225,7 @@ function totais_campanha($campanha) {
 }
 
 function totais_empresa($empresa) {
-    $total = array(
-        'gasto' => 0,
-        'alcance' => 0,
-        'impressoes' => 0,
-        'campanhas' => 0,
-        'anuncios' => 0
-    );
+    $total = array('gasto' => 0, 'alcance' => 0, 'impressoes' => 0, 'campanhas' => 0, 'anuncios' => 0);
 
     foreach ($empresa['campanhas'] as $campanha) {
         $tc = totais_campanha($campanha);
@@ -399,35 +263,17 @@ function total_campanhas($empresas) {
     return $total;
 }
 
-/*
-|--------------------------------------------------------------------------
-| INICIALIZAÇÃO
-|--------------------------------------------------------------------------
-*/
-
-criar_admin_inicial($ARQUIVO_USUARIOS);
-$usuarios = carregar_usuarios($ARQUIVO_USUARIOS);
+criar_admin_inicial($USERS_FILE);
+$usuarios = carregar_usuarios($USERS_FILE);
 
 $mensagem = '';
 $erro = '';
-
-/*
-|--------------------------------------------------------------------------
-| LOGOUT
-|--------------------------------------------------------------------------
-*/
 
 if (isset($_GET['logout'])) {
     session_destroy();
     header('Location: index.php');
     exit;
 }
-
-/*
-|--------------------------------------------------------------------------
-| CADASTRO DE CONTA
-|--------------------------------------------------------------------------
-*/
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['acao'] == 'criar_conta') {
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
@@ -448,18 +294,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['aca
             'criado_em' => date('Y-m-d H:i:s')
         );
 
-        salvar_usuarios($ARQUIVO_USUARIOS, $usuarios);
-        $usuarios = carregar_usuarios($ARQUIVO_USUARIOS);
-
+        salvar_usuarios($USERS_FILE, $usuarios);
+        $usuarios = carregar_usuarios($USERS_FILE);
         $mensagem = 'Conta criada com sucesso. Aguarde o admin aprovar seu acesso.';
     }
 }
-
-/*
-|--------------------------------------------------------------------------
-| LOGIN
-|--------------------------------------------------------------------------
-*/
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['acao'] == 'login') {
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
@@ -484,12 +323,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['aca
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| USUÁRIO LOGADO
-|--------------------------------------------------------------------------
-*/
-
 $logado = isset($_SESSION['usuario_id']);
 $usuario_logado = null;
 $is_admin = false;
@@ -507,12 +340,6 @@ if ($logado) {
     $is_admin = ($usuario_logado['tipo'] == 'admin');
 }
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN: SALVAR USUÁRIO
-|--------------------------------------------------------------------------
-*/
-
 if ($logado && $is_admin && $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['acao'] == 'salvar_usuario') {
     $id_usuario = isset($_POST['id_usuario']) ? $_POST['id_usuario'] : '';
     $status = isset($_POST['status']) ? $_POST['status'] : 'pendente';
@@ -523,25 +350,17 @@ if ($logado && $is_admin && $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST
 
     if ($busca) {
         $indice = $busca['indice'];
-
         $usuarios[$indice]['status'] = $status;
         $usuarios[$indice]['tipo'] = $tipo;
         $usuarios[$indice]['empresas'] = $empresas_usuario;
 
-        salvar_usuarios($ARQUIVO_USUARIOS, $usuarios);
-        $usuarios = carregar_usuarios($ARQUIVO_USUARIOS);
+        salvar_usuarios($USERS_FILE, $usuarios);
+        $usuarios = carregar_usuarios($USERS_FILE);
         $mensagem = 'Usuário atualizado com sucesso.';
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| ROTAS E FILTROS
-|--------------------------------------------------------------------------
-*/
-
 $pagina = isset($_GET['pagina']) ? $_GET['pagina'] : 'login';
-
 $periodo_selecionado = isset($_GET['periodo']) ? $_GET['periodo'] : '7';
 
 if (!isset($periodos[$periodo_selecionado])) {
@@ -565,16 +384,8 @@ if ($logado && $is_admin) {
     }
 }
 
-$empresa_selecionada = null;
-$campanha_selecionada = null;
-
-if ($empresa_slug != '') {
-    $empresa_selecionada = buscar_empresa($empresas_liberadas, $empresa_slug);
-}
-
-if ($empresa_selecionada && $campanha_slug != '') {
-    $campanha_selecionada = buscar_campanha($empresa_selecionada['campanhas'], $campanha_slug);
-}
+$empresa_selecionada = $empresa_slug ? buscar_empresa($empresas_liberadas, $empresa_slug) : null;
+$campanha_selecionada = ($empresa_selecionada && $campanha_slug) ? buscar_campanha($empresa_selecionada['campanhas'], $campanha_slug) : null;
 
 $anuncios_geral = todos_anuncios($empresas);
 $max_alcance = 1;
@@ -607,7 +418,6 @@ foreach ($ranking_lista as $anuncio) {
     $ranking[$anuncio['id']] = $posicao;
     $posicao++;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -635,9 +445,7 @@ foreach ($ranking_lista as $anuncio) {
             --shadow: 0 14px 34px rgba(15, 23, 42, .10);
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -649,9 +457,7 @@ foreach ($ranking_lista as $anuncio) {
                 linear-gradient(135deg, #f8fbff 0%, #edf2fb 100%);
         }
 
-        a {
-            color: inherit;
-        }
+        a { color: inherit; }
 
         .shell {
             width: min(1160px, calc(100% - 28px));
@@ -721,12 +527,6 @@ foreach ($ranking_lista as $anuncio) {
             background: #ffffff;
         }
 
-        .field input:focus,
-        .field select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(91, 110, 225, .14);
-        }
-
         .button {
             border: none;
             cursor: pointer;
@@ -740,12 +540,6 @@ foreach ($ranking_lista as $anuncio) {
             display: inline-flex;
             justify-content: center;
             align-items: center;
-        }
-
-        .button.secondary {
-            color: #3730a3;
-            background: #ffffff;
-            border: 1px solid #c7d2fe;
         }
 
         .auth-link {
@@ -779,9 +573,7 @@ foreach ($ranking_lista as $anuncio) {
             border: 1px solid #bbf7d0;
         }
 
-        header {
-            padding: 18px 0 14px;
-        }
+        header { padding: 18px 0 14px; }
 
         .hero {
             color: #ffffff;
@@ -829,9 +621,7 @@ foreach ($ranking_lista as $anuncio) {
             font-size: .96rem;
         }
 
-        main {
-            padding: 8px 0 90px;
-        }
+        main { padding: 8px 0 90px; }
 
         .nav {
             position: sticky;
@@ -905,7 +695,6 @@ foreach ($ranking_lista as $anuncio) {
             background: var(--primary);
             color: #ffffff;
             border-color: var(--primary);
-            box-shadow: 0 8px 18px rgba(91, 110, 225, .28);
         }
 
         .period-chip {
@@ -967,7 +756,8 @@ foreach ($ranking_lista as $anuncio) {
             color: inherit;
         }
 
-        .card {
+        .card,
+        .user-card {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 24px;
@@ -975,9 +765,6 @@ foreach ($ranking_lista as $anuncio) {
             padding: 16px;
             display: grid;
             gap: 14px;
-            background:
-                radial-gradient(circle at top right, rgba(91, 110, 225, .13), transparent 12rem),
-                linear-gradient(135deg, #ffffff 0%, #f7f9ff 100%);
         }
 
         .card-top {
@@ -996,10 +783,10 @@ foreach ($ranking_lista as $anuncio) {
             color: #ffffff;
             font-weight: 900;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            box-shadow: 0 10px 22px rgba(91, 110, 225, .24);
         }
 
-        .card h2 {
+        .card h2,
+        .user-card h3 {
             margin: 0;
             font-size: 1rem;
             line-height: 1.28;
@@ -1007,7 +794,8 @@ foreach ($ranking_lista as $anuncio) {
 
         .card p,
         .heading p,
-        .ad-head p {
+        .ad-head p,
+        .user-card p {
             margin: 6px 0 0;
             color: var(--muted);
             font-size: .76rem;
@@ -1052,7 +840,7 @@ foreach ($ranking_lista as $anuncio) {
         }
 
         .heading {
-            background: linear-gradient(135deg, #ffffff 0%, #f7f9ff 100%);
+            background: #ffffff;
             border: 1px solid var(--border);
             border-radius: 24px;
             padding: 16px;
@@ -1109,29 +897,10 @@ foreach ($ranking_lista as $anuncio) {
             justify-content: space-between;
             color: #ffffff;
             background: linear-gradient(135deg, #1d4ed8, #60a5fa);
-            position: relative;
-            overflow: hidden;
         }
 
         .ad-visual.instagram {
             background: linear-gradient(135deg, #be185d, #f97316);
-        }
-
-        .ad-visual:after {
-            content: "";
-            position: absolute;
-            width: 150px;
-            height: 150px;
-            right: -44px;
-            top: -48px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .18);
-        }
-
-        .ad-visual span,
-        .ad-visual strong {
-            position: relative;
-            z-index: 1;
         }
 
         .ad-visual span {
@@ -1230,28 +999,6 @@ foreach ($ranking_lista as $anuncio) {
             font-size: .76rem;
         }
 
-        .user-card {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: 22px;
-            padding: 16px;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
-            display: grid;
-            gap: 14px;
-        }
-
-        .user-card h3 {
-            margin: 0;
-            font-size: 1rem;
-        }
-
-        .user-card p {
-            margin: 4px 0 0;
-            color: var(--muted);
-            font-size: .82rem;
-            overflow-wrap: anywhere;
-        }
-
         .admin-form {
             display: grid;
             gap: 12px;
@@ -1290,13 +1037,10 @@ foreach ($ranking_lista as $anuncio) {
             color: #ffffff;
             text-decoration: none;
             font-weight: 900;
-            box-shadow: 0 12px 28px rgba(91, 110, 225, .35);
         }
 
         @media (min-width: 680px) {
-            header {
-                padding-top: 30px;
-            }
+            header { padding-top: 30px; }
 
             .hero {
                 grid-template-columns: 1.25fr .75fr;
@@ -1889,47 +1633,28 @@ foreach ($ranking_lista as $anuncio) {
 
 </body>
 </html>
-'''
+"""
 
-index_path = Path("/mnt/data/index.php")
-index_path.write_text(php, encoding="utf-8")
+# Validate no Python markers and starts with PHP
+for marker in ["from pathlib import Path", "import zipfile", "import shutil", "php = r'''", "Path("]:
+    if marker in php:
+        raise ValueError(f"Marcador proibido encontrado: {marker}")
 
-zip_dir = Path("/mnt/data/painel_do_zero_usuario_admin_empresas")
-if zip_dir.exists():
-    shutil.rmtree(zip_dir)
-zip_dir.mkdir()
+if not php.startswith("<?php"):
+    raise ValueError("Arquivo não começa com <?php")
 
-(zip_dir / "index.php").write_text(php, encoding="utf-8")
-(zip_dir / "README.txt").write_text("""PAINEL CRIADO DO ZERO
+out = Path("/mnt/data/index_reescrito_do_zero.php")
+out.write_text(php, encoding="utf-8")
 
-Login admin inicial:
-E-mail: kevinnikolas417@gmail.com
-Senha: 123456
-
-Fluxo:
-1. Usuário cria conta com e-mail e senha pessoal.
-2. Conta fica pendente.
-3. Admin aprova.
-4. Admin define tipo: admin ou usuario.
-5. Admin designa empresas responsáveis.
-6. Usuário comum visualiza somente empresas liberadas.
-
-Instalação:
-Suba apenas o arquivo index.php para a raiz do GitHub.
-
-Observação:
-O sistema cria automaticamente a pasta data/usuarios.json.
-A hospedagem precisa permitir escrita na pasta.
-""", encoding="utf-8")
-
-zip_path = Path("/mnt/data/painel_do_zero_usuario_admin_empresas.zip")
+zip_path = Path("/mnt/data/index_reescrito_do_zero.zip")
 if zip_path.exists():
     zip_path.unlink()
 
 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-    z.write(zip_dir / "index.php", arcname="index.php")
-    z.write(zip_dir / "README.txt", arcname="README.txt")
+    z.write(out, arcname="index.php")
+    z.writestr("README.txt", "Arquivo PHP reescrito do zero. Suba o index.php na raiz do GitHub. Login admin: kevinnikolas417@gmail.com / 123456")
 
-print("Arquivo direto criado:", index_path)
+print("Arquivo criado:", out)
 print("ZIP criado:", zip_path)
-print("Total de linhas:", len(php.splitlines()))
+print("Linhas:", len(php.splitlines()))
+print("Começa com:", php[:5])
