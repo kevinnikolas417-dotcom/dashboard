@@ -1,19 +1,26 @@
 from pathlib import Path
 import zipfile, shutil
 
-base = Path("/mnt/data/parisviu_dashboard_php_links_periodo")
+base = Path("/mnt/data/parisviu_admin_login_php")
 if base.exists():
     shutil.rmtree(base)
 base.mkdir()
 
 php = r'''<?php
-// Dashboard Paris Viu - PHP + HTML
-// Versão com hiperlinks reais por campanha e filtro de data ativo via URL.
-// Exemplos:
-// index.php?periodo=7
-// index.php?periodo=15
-// index.php?periodo=30
-// index.php?periodo=7&campanha=campanha-0010-nova-parisviu
+session_start();
+
+/*
+  Dashboard Admin - PHP + HTML
+  Login:
+  E-mail: kevinnikolas417@gmail.com
+  Senha: 123456
+
+  Estrutura:
+  Login -> Empresas ativas -> PARISVIU -> Campanhas -> Anúncios/Dashboards
+*/
+
+$adminEmail = 'kevinnikolas417@gmail.com';
+$adminPassword = '123456';
 
 $periods = [
     '7' => [
@@ -33,47 +40,55 @@ $periods = [
     ],
 ];
 
-$campaigns = [
+$companies = [
     [
-        "slug" => "campanha-0010-nova-parisviu",
-        "id" => "120244842239960764",
-        "name" => "[CAMPANHA0010] [NOVA PARISVIU] [RECONHECIMENTO]",
-        "dailyBudget" => 20.00,
-        "creatives" => [
-            ["id" => "120244842311700764", "name" => "[ADD001] [CARROSSEL]", "platform" => "facebook", "spend" => 1.81, "reach" => 1182, "impressions" => 1242],
-            ["id" => "120244842239980764", "name" => "[ADD002] [CARROSSEL]", "platform" => "instagram", "spend" => 1.85, "reach" => 1456, "impressions" => 1456],
-        ],
-    ],
-    [
-        "slug" => "campanha-0009-historia-parisviu",
-        "id" => "120244828429190764",
-        "name" => "[CAMPANHA0009] [HISTORIA PARISVIU] [RECONHECIMENTO]",
-        "dailyBudget" => 20.00,
-        "creatives" => [
-            ["id" => "120244841964610764", "name" => "[ADD001] [VÍDEO]", "platform" => "facebook", "spend" => 1.87, "reach" => 1053, "impressions" => 1163],
-            ["id" => "120244841917760764", "name" => "[ADD001] [VÍDEO]", "platform" => "instagram", "spend" => 2.13, "reach" => 1567, "impressions" => 1579],
-        ],
-    ],
-    [
-        "slug" => "campanha-0008-ocul-prts-na-hora",
-        "id" => "120244828207010764",
-        "name" => "[CAMPANHA0008] [ÓCUL PRTS NA HORA]",
-        "dailyBudget" => 20.00,
-        "creatives" => [
-            ["id" => "120244841775000764", "name" => "[ADD002] [VÍDEO]", "platform" => "facebook", "spend" => 2.18, "reach" => 1436, "impressions" => 1512],
-            ["id" => "120244841168570764", "name" => "[ADD002] [VÍDEO]", "platform" => "instagram", "spend" => 2.17, "reach" => 1593, "impressions" => 1593],
-        ],
-    ],
-    [
-        "slug" => "campanha-0007-oculos-9990-micro",
-        "id" => "120244828194760764",
-        "name" => "[CAMP0007] [ÓCULOS 99,90] [MICRO]",
-        "dailyBudget" => 40.00,
-        "creatives" => [
-            ["id" => "120244842110540764", "name" => "[ADD002] [VÍDEO]", "platform" => "facebook", "spend" => 2.15, "reach" => 1448, "impressions" => 1500],
-            ["id" => "120244842071230764", "name" => "[ADD004] [CARROSSEL]", "platform" => "facebook", "spend" => 0.43, "reach" => 16, "impressions" => 18],
-            ["id" => "120244842031390764", "name" => "[ADD003] [CARROSSEL]", "platform" => "instagram", "spend" => 0.20, "reach" => 6, "impressions" => 6],
-            ["id" => "120244828194770764", "name" => "[ADD001] [VÍDEO]", "platform" => "instagram", "spend" => 2.40, "reach" => 1770, "impressions" => 1820],
+        'slug' => 'parisviu',
+        'name' => 'PARISVIU',
+        'status' => 'Ativa',
+        'description' => 'Dashboard de campanhas e anúncios da Paris Viu.',
+        'campaigns' => [
+            [
+                "slug" => "campanha-0010-nova-parisviu",
+                "id" => "120244842239960764",
+                "name" => "[CAMPANHA0010] [NOVA PARISVIU] [RECONHECIMENTO]",
+                "dailyBudget" => 20.00,
+                "creatives" => [
+                    ["id" => "120244842311700764", "name" => "[ADD001] [CARROSSEL]", "platform" => "facebook", "spend" => 1.81, "reach" => 1182, "impressions" => 1242],
+                    ["id" => "120244842239980764", "name" => "[ADD002] [CARROSSEL]", "platform" => "instagram", "spend" => 1.85, "reach" => 1456, "impressions" => 1456],
+                ],
+            ],
+            [
+                "slug" => "campanha-0009-historia-parisviu",
+                "id" => "120244828429190764",
+                "name" => "[CAMPANHA0009] [HISTORIA PARISVIU] [RECONHECIMENTO]",
+                "dailyBudget" => 20.00,
+                "creatives" => [
+                    ["id" => "120244841964610764", "name" => "[ADD001] [VÍDEO]", "platform" => "facebook", "spend" => 1.87, "reach" => 1053, "impressions" => 1163],
+                    ["id" => "120244841917760764", "name" => "[ADD001] [VÍDEO]", "platform" => "instagram", "spend" => 2.13, "reach" => 1567, "impressions" => 1579],
+                ],
+            ],
+            [
+                "slug" => "campanha-0008-ocul-prts-na-hora",
+                "id" => "120244828207010764",
+                "name" => "[CAMPANHA0008] [ÓCUL PRTS NA HORA]",
+                "dailyBudget" => 20.00,
+                "creatives" => [
+                    ["id" => "120244841775000764", "name" => "[ADD002] [VÍDEO]", "platform" => "facebook", "spend" => 2.18, "reach" => 1436, "impressions" => 1512],
+                    ["id" => "120244841168570764", "name" => "[ADD002] [VÍDEO]", "platform" => "instagram", "spend" => 2.17, "reach" => 1593, "impressions" => 1593],
+                ],
+            ],
+            [
+                "slug" => "campanha-0007-oculos-9990-micro",
+                "id" => "120244828194760764",
+                "name" => "[CAMP0007] [ÓCULOS 99,90] [MICRO]",
+                "dailyBudget" => 40.00,
+                "creatives" => [
+                    ["id" => "120244842110540764", "name" => "[ADD002] [VÍDEO]", "platform" => "facebook", "spend" => 2.15, "reach" => 1448, "impressions" => 1500],
+                    ["id" => "120244842071230764", "name" => "[ADD004] [CARROSSEL]", "platform" => "facebook", "spend" => 0.43, "reach" => 16, "impressions" => 18],
+                    ["id" => "120244842031390764", "name" => "[ADD003] [CARROSSEL]", "platform" => "instagram", "spend" => 0.20, "reach" => 6, "impressions" => 6],
+                    ["id" => "120244828194770764", "name" => "[ADD001] [VÍDEO]", "platform" => "instagram", "spend" => 2.40, "reach" => 1770, "impressions" => 1820],
+                ],
+            ],
         ],
     ],
 ];
@@ -121,6 +136,40 @@ function campaign_totals($campaign) {
     ];
 }
 
+function company_totals($company) {
+    $spend = 0;
+    $reach = 0;
+    $impressions = 0;
+    $campaignsCount = count($company['campaigns']);
+    $creativesCount = 0;
+
+    foreach ($company['campaigns'] as $campaign) {
+        $totals = campaign_totals($campaign);
+        $spend += $totals['spend'];
+        $reach += $totals['reach'];
+        $impressions += $totals['impressions'];
+        $creativesCount += count($campaign['creatives']);
+    }
+
+    return [
+        'spend' => $spend,
+        'reach' => $reach,
+        'impressions' => $impressions,
+        'campaigns' => $campaignsCount,
+        'creatives' => $creativesCount,
+    ];
+}
+
+function find_company($companies, $slug) {
+    foreach ($companies as $company) {
+        if ($company['slug'] === $slug) {
+            return $company;
+        }
+    }
+
+    return null;
+}
+
 function find_campaign($campaigns, $slug) {
     foreach ($campaigns as $campaign) {
         if ($campaign['slug'] === $slug) {
@@ -131,25 +180,59 @@ function find_campaign($campaigns, $slug) {
     return null;
 }
 
+function get_all_creatives($companies) {
+    $all = [];
+
+    foreach ($companies as $company) {
+        foreach ($company['campaigns'] as $campaign) {
+            foreach ($campaign['creatives'] as $creative) {
+                $all[] = $creative;
+            }
+        }
+    }
+
+    return $all;
+}
+
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: index.php');
+    exit;
+}
+
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+
+    if ($email === $adminEmail && $password === $adminPassword) {
+        $_SESSION['admin_logged'] = true;
+        $_SESSION['admin_email'] = $email;
+        header('Location: index.php');
+        exit;
+    }
+
+    $error = 'E-mail ou senha inválidos.';
+}
+
+$isLogged = !empty($_SESSION['admin_logged']);
+
 $selectedPeriod = $_GET['periodo'] ?? '7';
 if (!array_key_exists($selectedPeriod, $periods)) {
     $selectedPeriod = '7';
 }
+$currentPeriod = $periods[$selectedPeriod];
+
+$selectedCompanySlug = $_GET['empresa'] ?? '';
+$selectedCompany = $selectedCompanySlug ? find_company($companies, $selectedCompanySlug) : null;
 
 $selectedCampaignSlug = $_GET['campanha'] ?? '';
-$selectedCampaign = $selectedCampaignSlug ? find_campaign($campaigns, $selectedCampaignSlug) : null;
+$selectedCampaign = ($selectedCompany && $selectedCampaignSlug)
+    ? find_campaign($selectedCompany['campaigns'], $selectedCampaignSlug)
+    : null;
 
-$allCreatives = [];
-foreach ($campaigns as $campaign) {
-    foreach ($campaign['creatives'] as $creative) {
-        $allCreatives[] = $creative;
-    }
-}
-
-$totalSpend = array_sum(array_column($allCreatives, 'spend'));
-$totalReach = array_sum(array_column($allCreatives, 'reach'));
-$totalImpressions = array_sum(array_column($allCreatives, 'impressions'));
-
+$allCreatives = get_all_creatives($companies);
 $maxReach = max(array_column($allCreatives, 'reach'));
 $maxSpend = max(array_column($allCreatives, 'spend'));
 
@@ -162,19 +245,13 @@ $ranks = [];
 foreach ($rankedCreatives as $index => $creative) {
     $ranks[$creative['id']] = $index + 1;
 }
-
-$currentPeriod = $periods[$selectedPeriod];
-$pageTitle = $selectedCampaign ? 'Anúncios da Campanha' : 'Dashboard de Campanhas';
-$pageSubtitle = $selectedCampaign
-    ? 'Campanha selecionada via hiperlink, mantendo o filtro de data ativo.'
-    : 'Escolha o período e clique em uma campanha para abrir os anúncios.';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= e($pageTitle) ?> - Paris Viu</title>
+  <title>Admin Dashboard - Paris Viu</title>
   <style>
     :root {
       --bg:#f4f7fb;
@@ -187,6 +264,8 @@ $pageSubtitle = $selectedCampaign
       --soft:#f8fafc;
       --success:#047857;
       --success-bg:#ecfdf5;
+      --danger:#b91c1c;
+      --danger-bg:#fef2f2;
       --shadow:0 14px 34px rgba(15,23,42,.10);
     }
     * { box-sizing:border-box; }
@@ -204,6 +283,83 @@ $pageSubtitle = $selectedCampaign
     .shell {
       width:min(1160px,calc(100% - 28px));
       margin:0 auto;
+    }
+    .login-page {
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:22px 14px;
+    }
+    .login-card {
+      width:min(460px,100%);
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:28px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .login-hero {
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      color:#fff;
+      padding:28px;
+    }
+    .login-hero h1 {
+      margin:0 0 8px;
+      font-size:1.9rem;
+      letter-spacing:-.03em;
+    }
+    .login-hero p {
+      margin:0;
+      color:rgba(255,255,255,.86);
+      line-height:1.45;
+    }
+    .login-form {
+      padding:24px;
+      display:grid;
+      gap:14px;
+    }
+    .field {
+      display:grid;
+      gap:7px;
+    }
+    .field label {
+      font-size:.82rem;
+      color:#334155;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+    .field input {
+      width:100%;
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:13px 14px;
+      font-size:1rem;
+      outline:none;
+    }
+    .field input:focus {
+      border-color:var(--primary);
+      box-shadow:0 0 0 4px rgba(91,110,225,.14);
+    }
+    .login-button {
+      border:0;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      color:#fff;
+      border-radius:16px;
+      padding:14px;
+      font-weight:950;
+      font-size:1rem;
+      cursor:pointer;
+      box-shadow:0 12px 28px rgba(91,110,225,.28);
+    }
+    .login-error {
+      background:var(--danger-bg);
+      color:var(--danger);
+      border:1px solid #fecaca;
+      border-radius:14px;
+      padding:10px 12px;
+      font-weight:850;
+      font-size:.9rem;
     }
     header { padding:18px 0 14px; }
     .hero {
@@ -278,6 +434,11 @@ $pageSubtitle = $selectedCampaign
       font-size:.78rem;
       box-shadow:0 6px 16px rgba(15,23,42,.06);
     }
+    .mobile-nav a.logout {
+      color:#b91c1c;
+      border-color:#fecaca;
+      background:#fff7f7;
+    }
     .date-filter {
       background:#fff;
       border:1px solid var(--border);
@@ -343,6 +504,7 @@ $pageSubtitle = $selectedCampaign
     }
     .top-metrics.compact article { padding:13px; }
     .top-metrics span,
+    .company-card-metrics span,
     .campaign-card-metrics span,
     .ad-dashboard span,
     .ad-insights span,
@@ -362,16 +524,19 @@ $pageSubtitle = $selectedCampaign
       line-height:1.05;
       letter-spacing:-.02em;
     }
+    .company-grid,
     .campaign-grid {
       display:grid;
       grid-template-columns:1fr;
       gap:14px;
       align-items:start;
     }
+    .company-link,
     .campaign-link {
       text-decoration:none;
       color:inherit;
     }
+    .company-card,
     .campaign-card {
       background:var(--card);
       border:1px solid var(--border);
@@ -387,13 +552,16 @@ $pageSubtitle = $selectedCampaign
         radial-gradient(circle at top right,rgba(91,110,225,.13),transparent 12rem),
         linear-gradient(135deg,#ffffff 0%,#f7f9ff 100%);
     }
+    .company-card:active,
     .campaign-card:active { transform:scale(.99); }
+    .company-card-top,
     .campaign-card-top {
       display:grid;
       grid-template-columns:auto 1fr;
       gap:12px;
       align-items:flex-start;
     }
+    .company-icon,
     .campaign-icon {
       width:48px;
       height:48px;
@@ -406,12 +574,14 @@ $pageSubtitle = $selectedCampaign
       flex:0 0 auto;
       box-shadow:0 10px 22px rgba(91,110,225,.24);
     }
+    .company-card h2,
     .campaign-card h2 {
       margin:0;
       font-size:1rem;
       line-height:1.28;
       letter-spacing:-.01em;
     }
+    .company-card p,
     .campaign-card p,
     .section-heading p {
       margin:6px 0 0;
@@ -420,11 +590,13 @@ $pageSubtitle = $selectedCampaign
       font-weight:750;
       overflow-wrap:anywhere;
     }
+    .company-card-metrics,
     .campaign-card-metrics {
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
       gap:8px;
     }
+    .company-card-metrics div,
     .campaign-card-metrics div,
     .detail-budget {
       background:#fff;
@@ -432,6 +604,7 @@ $pageSubtitle = $selectedCampaign
       border-radius:16px;
       padding:10px;
     }
+    .company-card-metrics strong,
     .campaign-card-metrics strong,
     .detail-budget strong {
       font-weight:950;
@@ -448,6 +621,17 @@ $pageSubtitle = $selectedCampaign
       padding:9px 12px;
       font-weight:950;
       font-size:.78rem;
+    }
+    .status-badge {
+      display:inline-flex;
+      background:var(--success-bg);
+      border:1px solid #bbf7d0;
+      color:var(--success);
+      border-radius:999px;
+      padding:6px 9px;
+      font-size:.72rem;
+      font-weight:950;
+      margin-top:8px;
     }
     .section-heading {
       background:linear-gradient(135deg,#fff 0%,#f7f9ff 100%);
@@ -664,7 +848,9 @@ $pageSubtitle = $selectedCampaign
       header { padding-top:30px; }
       .hero { grid-template-columns:1.25fr .75fr; padding:30px; }
       .top-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-bottom:22px; }
+      .company-grid,
       .campaign-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+      .company-card,
       .campaign-card { min-height:270px; padding:20px; }
       .section-heading { grid-template-columns:1fr auto; padding:20px; }
       .ads-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
@@ -680,25 +866,53 @@ $pageSubtitle = $selectedCampaign
   </style>
 </head>
 <body>
+<?php if (!$isLogged): ?>
+  <section class="login-page">
+    <div class="login-card">
+      <div class="login-hero">
+        <h1>Admin</h1>
+        <p>Acesse para visualizar empresas ativas, campanhas e anúncios.</p>
+      </div>
+
+      <form class="login-form" method="POST" action="index.php">
+        <?php if ($error): ?>
+          <div class="login-error"><?= e($error) ?></div>
+        <?php endif; ?>
+
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" value="<?= e($adminEmail) ?>" required>
+        </div>
+
+        <div class="field">
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" placeholder="Digite sua senha" required>
+        </div>
+
+        <button class="login-button" type="submit">Entrar</button>
+      </form>
+    </div>
+  </section>
+<?php else: ?>
   <header>
     <div class="shell">
       <section class="hero">
         <div>
-          <h1><?= e($pageTitle) ?></h1>
-          <p><?= e($pageSubtitle) ?></p>
+          <h1>Admin Dashboard</h1>
+          <p>Visualize empresas ativas, campanhas e anúncios em uma área protegida.</p>
         </div>
         <div class="hero-meta">
           <div>
-            <span>Conta de anúncios</span>
-            <strong>9729633853761104</strong>
+            <span>Usuário</span>
+            <strong><?= e($_SESSION['admin_email']) ?></strong>
           </div>
           <div>
             <span>Período ativo</span>
             <strong><?= e($currentPeriod['label']) ?></strong>
           </div>
           <div>
-            <span>Estrutura</span>
-            <strong>PHP + HTML com hiperlinks</strong>
+            <span>Status</span>
+            <strong>Admin conectado</strong>
           </div>
         </div>
       </section>
@@ -708,12 +922,13 @@ $pageSubtitle = $selectedCampaign
   <main>
     <div class="shell">
       <nav class="mobile-nav" aria-label="Atalhos">
-        <a href="index.php?periodo=<?= e($selectedPeriod) ?>">Campanhas</a>
-        <?php foreach ($campaigns as $campaign): ?>
-          <a href="index.php?periodo=<?= e($selectedPeriod) ?>&campanha=<?= e($campaign['slug']) ?>">
-            <?= e(substr($campaign['name'], 1, 12)) ?>
+        <a href="index.php?periodo=<?= e($selectedPeriod) ?>">Empresas</a>
+        <?php foreach ($companies as $company): ?>
+          <a href="index.php?periodo=<?= e($selectedPeriod) ?>&empresa=<?= e($company['slug']) ?>">
+            <?= e($company['name']) ?>
           </a>
         <?php endforeach; ?>
+        <a class="logout" href="index.php?logout=1">Sair</a>
       </nav>
 
       <section class="date-filter">
@@ -722,6 +937,9 @@ $pageSubtitle = $selectedCampaign
           <?php foreach ($periods as $periodKey => $period): ?>
             <?php
               $periodUrl = 'index.php?periodo=' . urlencode($periodKey);
+              if ($selectedCompany) {
+                  $periodUrl .= '&empresa=' . urlencode($selectedCompany['slug']);
+              }
               if ($selectedCampaign) {
                   $periodUrl .= '&campanha=' . urlencode($selectedCampaign['slug']);
               }
@@ -737,30 +955,102 @@ $pageSubtitle = $selectedCampaign
         <?= e($currentPeriod['label']) ?>: <?= e($currentPeriod['start']) ?> a <?= e($currentPeriod['stop']) ?>
       </div>
 
-      <?php if (!$selectedCampaign): ?>
+      <?php if (!$selectedCompany): ?>
         <section class="top-metrics">
           <article>
-            <span>Gasto total</span>
-            <strong><?= br_money($totalSpend) ?></strong>
-          </article>
-          <article>
-            <span>Alcance total</span>
-            <strong><?= br_int($totalReach) ?></strong>
+            <span>Empresas ativas</span>
+            <strong><?= count($companies) ?></strong>
           </article>
           <article>
             <span>Campanhas</span>
-            <strong><?= count($campaigns) ?></strong>
+            <strong><?= array_sum(array_map(fn($company) => count($company['campaigns']), $companies)) ?></strong>
           </article>
           <article>
             <span>Criativos</span>
             <strong><?= count($allCreatives) ?></strong>
           </article>
+          <article>
+            <span>Alcance total</span>
+            <strong><?= br_int(array_sum(array_column($allCreatives, 'reach'))) ?></strong>
+          </article>
+        </section>
+
+        <section class="company-grid">
+          <?php foreach ($companies as $company): ?>
+            <?php $companyTotals = company_totals($company); ?>
+            <a class="company-link" href="index.php?periodo=<?= e($selectedPeriod) ?>&empresa=<?= e($company['slug']) ?>">
+              <article class="company-card">
+                <div class="company-card-top">
+                  <div class="company-icon">PV</div>
+                  <div>
+                    <h2><?= e($company['name']) ?></h2>
+                    <p><?= e($company['description']) ?></p>
+                    <span class="status-badge"><?= e($company['status']) ?></span>
+                  </div>
+                </div>
+
+                <div class="company-card-metrics">
+                  <div>
+                    <span>Campanhas</span>
+                    <strong><?= e($companyTotals['campaigns']) ?></strong>
+                  </div>
+                  <div>
+                    <span>Anúncios</span>
+                    <strong><?= e($companyTotals['creatives']) ?></strong>
+                  </div>
+                  <div>
+                    <span>Gasto</span>
+                    <strong><?= br_money($companyTotals['spend']) ?></strong>
+                  </div>
+                  <div>
+                    <span>Alcance</span>
+                    <strong><?= br_int($companyTotals['reach']) ?></strong>
+                  </div>
+                </div>
+
+                <div class="open-label">Abrir empresa</div>
+              </article>
+            </a>
+          <?php endforeach; ?>
+        </section>
+      <?php elseif ($selectedCompany && !$selectedCampaign): ?>
+        <?php $companyTotals = company_totals($selectedCompany); ?>
+        <section class="section-heading">
+          <div>
+            <a class="back-link" href="index.php?periodo=<?= e($selectedPeriod) ?>">← Voltar para empresas</a>
+            <h2><?= e($selectedCompany['name']) ?></h2>
+            <p><?= e($selectedCompany['description']) ?></p>
+          </div>
+
+          <div class="detail-budget">
+            <span>Status</span>
+            <strong><?= e($selectedCompany['status']) ?></strong>
+          </div>
+        </section>
+
+        <section class="top-metrics compact">
+          <article>
+            <span>Gasto</span>
+            <strong><?= br_money($companyTotals['spend']) ?></strong>
+          </article>
+          <article>
+            <span>Alcance</span>
+            <strong><?= br_int($companyTotals['reach']) ?></strong>
+          </article>
+          <article>
+            <span>Campanhas</span>
+            <strong><?= e($companyTotals['campaigns']) ?></strong>
+          </article>
+          <article>
+            <span>Anúncios</span>
+            <strong><?= e($companyTotals['creatives']) ?></strong>
+          </article>
         </section>
 
         <section class="campaign-grid">
-          <?php foreach ($campaigns as $campaign): ?>
+          <?php foreach ($selectedCompany['campaigns'] as $campaign): ?>
             <?php $campaignTotals = campaign_totals($campaign); ?>
-            <a class="campaign-link" href="index.php?periodo=<?= e($selectedPeriod) ?>&campanha=<?= e($campaign['slug']) ?>">
+            <a class="campaign-link" href="index.php?periodo=<?= e($selectedPeriod) ?>&empresa=<?= e($selectedCompany['slug']) ?>&campanha=<?= e($campaign['slug']) ?>">
               <article class="campaign-card">
                 <div class="campaign-card-top">
                   <div class="campaign-icon">PV</div>
@@ -794,11 +1084,11 @@ $pageSubtitle = $selectedCampaign
             </a>
           <?php endforeach; ?>
         </section>
-      <?php else: ?>
+      <?php elseif ($selectedCompany && $selectedCampaign): ?>
         <?php $campaignTotals = campaign_totals($selectedCampaign); ?>
         <section class="section-heading">
           <div>
-            <a class="back-link" href="index.php?periodo=<?= e($selectedPeriod) ?>">← Voltar para campanhas</a>
+            <a class="back-link" href="index.php?periodo=<?= e($selectedPeriod) ?>&empresa=<?= e($selectedCompany['slug']) ?>">← Voltar para campanhas</a>
             <h2><?= e($selectedCampaign['name']) ?></h2>
             <p>Campanha ID: <?= e($selectedCampaign['id']) ?></p>
           </div>
@@ -914,37 +1204,41 @@ $pageSubtitle = $selectedCampaign
     </div>
   </main>
 
-  <a class="floating-top" href="index.php?periodo=<?= e($selectedPeriod) ?>" aria-label="Voltar para campanhas">↑</a>
+  <a class="floating-top" href="index.php?periodo=<?= e($selectedPeriod) ?>" aria-label="Voltar para empresas">↑</a>
+<?php endif; ?>
 </body>
 </html>
 '''
 
 (base / "index.php").write_text(php, encoding="utf-8")
 
-readme = """# Dashboard Paris Viu - PHP + HTML com hiperlinks e filtro ativo
+readme = """# Admin Dashboard - PHP + HTML
+
+## Login
+
+E-mail: kevinnikolas417@gmail.com
+Senha: 123456
+
+## Estrutura
+
+Login -> Empresas Ativas -> PARISVIU -> Campanhas -> Anúncios/Dashboards
 
 ## Como usar
 
-Suba o arquivo `index.php` para sua hospedagem com PHP habilitado.
+1. Suba o arquivo `index.php` para a raiz do seu repositório GitHub.
+2. Faça commit na branch `main`.
+3. A Hostinger vai atualizar pelo webhook configurado.
 
-## URLs disponíveis
+## URLs
 
-- `index.php?periodo=7`
-- `index.php?periodo=15`
-- `index.php?periodo=30`
-- `index.php?periodo=7&campanha=campanha-0010-nova-parisviu`
-
-## O que foi feito
-
-- Cada campanha agora é um hiperlink real.
-- O filtro de data fica ativo e aparece na URL.
-- Ao trocar o período dentro de uma campanha, a campanha continua aberta.
-- Ao voltar para campanhas, o período selecionado permanece ativo.
+- `index.php` mostra a tela de login.
+- Após login, mostra empresas ativas.
+- `?empresa=parisviu` mostra campanhas da PARISVIU.
+- `?empresa=parisviu&campanha=campanha-0010-nova-parisviu` mostra os anúncios da campanha.
 """
-
 (base / "README.md").write_text(readme, encoding="utf-8")
 
-zip_path = Path("/mnt/data/parisviu_dashboard_php_hyperlinks_periodo.zip")
+zip_path = Path("/mnt/data/parisviu_admin_login_php.zip")
 if zip_path.exists():
     zip_path.unlink()
 
