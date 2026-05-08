@@ -1,7 +1,4 @@
-from pathlib import Path
-import zipfile
-
-php = """<?php
+<?php
 session_start();
 
 /*
@@ -82,6 +79,135 @@ $empresas = array(
                     array('id' => '120244842071230764', 'nome' => '[ADD004] [CARROSSEL]', 'plataforma' => 'facebook', 'gasto' => 0.43, 'alcance' => 16, 'impressoes' => 18),
                     array('id' => '120244842031390764', 'nome' => '[ADD003] [CARROSSEL]', 'plataforma' => 'instagram', 'gasto' => 0.20, 'alcance' => 6, 'impressoes' => 6),
                     array('id' => '120244828194770764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.40, 'alcance' => 1770, 'impressoes' => 1820)
+                )
+            )
+        )
+    )
+    ,
+    array(
+        'slug' => 'iddv',
+        'nome' => 'IDDV',
+        'status' => 'Ativa',
+        'descricao' => 'Instituto Direito De Ver — dados importados do relatório de 1 a 7 de maio de 2026. Conta de anúncios: 680017045142657. Página: Direito De Ver.',
+        'campanhas' => array(
+            array(
+                'slug' => 'campanha0002-conversao-engajamneto',
+                'id' => 'iddv-0001',
+                'nome' => '[CAMPANHA0002] [CONVERSÃO] [ENGAJAMNETO]',
+                'status_veiculacao' => 'active',
+                'tipo_resultado' => 'Conversas por mensagem iniciadas',
+                'resultados' => 35,
+                'custo_por_resultado' => 8.93942857,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0001-resumo', 'nome' => 'Resumo da campanha — Conversas por mensagem iniciadas', 'plataforma' => 'facebook', 'gasto' => 312.88, 'alcance' => 12654, 'impressoes' => 25983)
+                )
+            ),
+            array(
+                'slug' => 'iddv-reconhecimento-reels',
+                'id' => 'iddv-0002',
+                'nome' => 'IDDV Reconhecimento_Reels',
+                'status_veiculacao' => 'active',
+                'tipo_resultado' => 'Alcance',
+                'resultados' => 112358,
+                'custo_por_resultado' => 1.82488118,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0002-resumo', 'nome' => 'Resumo da campanha — Alcance', 'plataforma' => 'instagram', 'gasto' => 205.04, 'alcance' => 112358, 'impressoes' => 152017)
+                )
+            ),
+            array(
+                'slug' => 'campanha0003-reconhecimento-nuporanga',
+                'id' => 'iddv-0003',
+                'nome' => '[CAMPANHA0003] [RECONHECIMENTO] [NUPORANGA]',
+                'status_veiculacao' => 'active',
+                'tipo_resultado' => 'Alcance',
+                'resultados' => 31454,
+                'custo_por_resultado' => 4.46747631,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0003-resumo', 'nome' => 'Resumo da campanha — Alcance', 'plataforma' => 'facebook', 'gasto' => 140.52, 'alcance' => 31454, 'impressoes' => 47210)
+                )
+            ),
+            array(
+                'slug' => 'campanha0005-reconhecimento-micro',
+                'id' => 'iddv-0004',
+                'nome' => '[CAMPANHA0005] [RECONHECIMENTO] [MICRO]',
+                'status_veiculacao' => 'inactive',
+                'tipo_resultado' => 'Alcance',
+                'resultados' => 57676,
+                'custo_por_resultado' => 2.25171649,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0004-resumo', 'nome' => 'Resumo da campanha — Alcance', 'plataforma' => 'facebook', 'gasto' => 129.87, 'alcance' => 57676, 'impressoes' => 80806)
+                )
+            ),
+            array(
+                'slug' => 'post-consegue-imaginar-a-tamanha-felicidade-de',
+                'id' => 'iddv-0005',
+                'nome' => 'Post: "❤️ CONSEGUE IMAGINAR A TAMANHA FELICIDADE de..."',
+                'status_veiculacao' => 'recently_completed',
+                'tipo_resultado' => 'ThruPlay',
+                'resultados' => 1394,
+                'custo_por_resultado' => 0.02317791,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0005-resumo', 'nome' => 'Resumo da campanha — ThruPlay', 'plataforma' => 'facebook', 'gasto' => 32.31, 'alcance' => 575, 'impressoes' => 1477)
+                )
+            ),
+            array(
+                'slug' => 'campan0009-o-que-e-iddv-engajamento',
+                'id' => 'iddv-0006',
+                'nome' => '[CAMPAN0009] [O QUE É IDDV] [ENGAJAMENTO]',
+                'status_veiculacao' => 'inactive',
+                'tipo_resultado' => 'Conversas por mensagem iniciadas',
+                'resultados' => 1,
+                'custo_por_resultado' => 3.5,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0006-resumo', 'nome' => 'Resumo da campanha — Conversas por mensagem iniciadas', 'plataforma' => 'facebook', 'gasto' => 3.5, 'alcance' => 195, 'impressoes' => 209)
+                )
+            ),
+            array(
+                'slug' => 'post-ela-nao-esperava-ser-vista',
+                'id' => 'iddv-0007',
+                'nome' => 'Post: "ELA NÃO ESPERAVA SER VISTA. "',
+                'status_veiculacao' => 'active',
+                'tipo_resultado' => 'ThruPlay',
+                'resultados' => 26,
+                'custo_por_resultado' => 0.03615385,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0007-resumo', 'nome' => 'Resumo da campanha — ThruPlay', 'plataforma' => 'facebook', 'gasto' => 0.94, 'alcance' => 270, 'impressoes' => 273)
+                )
+            ),
+            array(
+                'slug' => 'post-do-instagram-ela-nao-esperava-ser-vista',
+                'id' => 'iddv-0008',
+                'nome' => 'Post do Instagram: ELA NÃO ESPERAVA SER VISTA!...',
+                'status_veiculacao' => 'active',
+                'tipo_resultado' => 'Visitas ao perfil do Instagram',
+                'resultados' => 7,
+                'custo_por_resultado' => 0.12428571,
+                'orcamento_diario' => 0.00,
+                'inicio_relatorio' => '2026-05-01',
+                'fim_relatorio' => '2026-05-07',
+                'anuncios' => array(
+                    array('id' => 'iddv-0008-resumo', 'nome' => 'Resumo da campanha — Visitas ao perfil do Instagram', 'plataforma' => 'instagram', 'gasto' => 0.87, 'alcance' => 79, 'impressoes' => 79)
                 )
             )
         )
@@ -183,7 +309,7 @@ function criar_admin_inicial($arquivo) {
             'senha_hash' => password_hash('123456', PASSWORD_DEFAULT),
             'tipo' => 'admin',
             'status' => 'ativo',
-            'empresas' => array('parisviu'),
+            'empresas' => array('parisviu', 'iddv'),
             'criado_em' => date('Y-m-d H:i:s')
         );
 
@@ -1364,7 +1490,7 @@ foreach ($ranking_lista as $anuncio) {
                             <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa['slug']); ?>">
                                 <article class="card">
                                     <div class="card-top">
-                                        <div class="avatar">PV</div>
+                                        <div class="avatar"><?php echo esc(substr($empresa['nome'], 0, 4)); ?></div>
 
                                         <div>
                                             <h2><?php echo esc($empresa['nome']); ?></h2>
@@ -1447,11 +1573,17 @@ foreach ($ranking_lista as $anuncio) {
                             <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>&campanha=<?php echo esc($campanha['slug']); ?>">
                                 <article class="card">
                                     <div class="card-top">
-                                        <div class="avatar">PV</div>
+                                        <div class="avatar"><?php echo esc(substr($empresa_selecionada['nome'], 0, 4)); ?></div>
 
                                         <div>
                                             <h2><?php echo esc($campanha['nome']); ?></h2>
                                             <p>Campanha ID: <?php echo esc($campanha['id']); ?></p>
+                                            <?php if (isset($campanha['status_veiculacao'])): ?>
+                                                <p>Status: <?php echo esc($campanha['status_veiculacao']); ?></p>
+                                            <?php endif; ?>
+                                            <?php if (isset($campanha['tipo_resultado'])): ?>
+                                                <p>Resultado: <?php echo esc($campanha['tipo_resultado']); ?></p>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
 
@@ -1492,6 +1624,12 @@ foreach ($ranking_lista as $anuncio) {
                             <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>">← Voltar para campanhas</a>
                             <h2><?php echo esc($campanha_selecionada['nome']); ?></h2>
                             <p>Campanha ID: <?php echo esc($campanha_selecionada['id']); ?></p>
+                            <?php if (isset($campanha_selecionada['status_veiculacao'])): ?>
+                                <p>Status: <?php echo esc($campanha_selecionada['status_veiculacao']); ?></p>
+                            <?php endif; ?>
+                            <?php if (isset($campanha_selecionada['tipo_resultado'])): ?>
+                                <p>Tipo de resultado: <?php echo esc($campanha_selecionada['tipo_resultado']); ?></p>
+                            <?php endif; ?>
                         </div>
 
                         <div class="mini-box">
@@ -1633,28 +1771,3 @@ foreach ($ranking_lista as $anuncio) {
 
 </body>
 </html>
-"""
-
-# Validate no Python markers and starts with PHP
-for marker in ["from pathlib import Path", "import zipfile", "import shutil", "php = r'''", "Path("]:
-    if marker in php:
-        raise ValueError(f"Marcador proibido encontrado: {marker}")
-
-if not php.startswith("<?php"):
-    raise ValueError("Arquivo não começa com <?php")
-
-out = Path("/mnt/data/index_reescrito_do_zero.php")
-out.write_text(php, encoding="utf-8")
-
-zip_path = Path("/mnt/data/index_reescrito_do_zero.zip")
-if zip_path.exists():
-    zip_path.unlink()
-
-with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-    z.write(out, arcname="index.php")
-    z.writestr("README.txt", "Arquivo PHP reescrito do zero. Suba o index.php na raiz do GitHub. Login admin: kevinnikolas417@gmail.com / 123456")
-
-print("Arquivo criado:", out)
-print("ZIP criado:", zip_path)
-print("Linhas:", len(php.splitlines()))
-print("Começa com:", php[:5])
