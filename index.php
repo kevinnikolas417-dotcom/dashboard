@@ -1,6 +1,37 @@
-<?php
+from pathlib import Path
+import zipfile, shutil
+
+base = Path("/mnt/data/parisviu_dashboard_php_links_periodo")
+if base.exists():
+    shutil.rmtree(base)
+base.mkdir()
+
+php = r'''<?php
 // Dashboard Paris Viu - PHP + HTML
-// Arquivo único. Basta subir este index.php em uma hospedagem com PHP habilitado.
+// Versão com hiperlinks reais por campanha e filtro de data ativo via URL.
+// Exemplos:
+// index.php?periodo=7
+// index.php?periodo=15
+// index.php?periodo=30
+// index.php?periodo=7&campanha=campanha-0010-nova-parisviu
+
+$periods = [
+    '7' => [
+        'label' => 'Últimos 7 dias',
+        'start' => '1 de maio de 2026',
+        'stop' => '7 de maio de 2026',
+    ],
+    '15' => [
+        'label' => 'Últimos 15 dias',
+        'start' => '23 de abril de 2026',
+        'stop' => '7 de maio de 2026',
+    ],
+    '30' => [
+        'label' => 'Últimos 30 dias',
+        'start' => '8 de abril de 2026',
+        'stop' => '7 de maio de 2026',
+    ],
+];
 
 $campaigns = [
     [
@@ -90,6 +121,24 @@ function campaign_totals($campaign) {
     ];
 }
 
+function find_campaign($campaigns, $slug) {
+    foreach ($campaigns as $campaign) {
+        if ($campaign['slug'] === $slug) {
+            return $campaign;
+        }
+    }
+
+    return null;
+}
+
+$selectedPeriod = $_GET['periodo'] ?? '7';
+if (!array_key_exists($selectedPeriod, $periods)) {
+    $selectedPeriod = '7';
+}
+
+$selectedCampaignSlug = $_GET['campanha'] ?? '';
+$selectedCampaign = $selectedCampaignSlug ? find_campaign($campaigns, $selectedCampaignSlug) : null;
+
 $allCreatives = [];
 foreach ($campaigns as $campaign) {
     foreach ($campaign['creatives'] as $creative) {
@@ -113,13 +162,19 @@ $ranks = [];
 foreach ($rankedCreatives as $index => $creative) {
     $ranks[$creative['id']] = $index + 1;
 }
+
+$currentPeriod = $periods[$selectedPeriod];
+$pageTitle = $selectedCampaign ? 'Anúncios da Campanha' : 'Dashboard de Campanhas';
+$pageSubtitle = $selectedCampaign
+    ? 'Campanha selecionada via hiperlink, mantendo o filtro de data ativo.'
+    : 'Escolha o período e clique em uma campanha para abrir os anúncios.';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Paris Viu - PHP + HTML</title>
+  <title><?= e($pageTitle) ?> - Paris Viu</title>
   <style>
     :root {
       --bg:#f4f7fb;
@@ -133,7 +188,6 @@ foreach ($rankedCreatives as $index => $creative) {
       --success:#047857;
       --success-bg:#ecfdf5;
       --shadow:0 14px 34px rgba(15,23,42,.10);
-      --radius:22px;
     }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
@@ -223,6 +277,43 @@ foreach ($rankedCreatives as $index => $creative) {
       font-weight:900;
       font-size:.78rem;
       box-shadow:0 6px 16px rgba(15,23,42,.06);
+    }
+    .date-filter {
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:14px;
+      box-shadow:0 8px 20px rgba(15,23,42,.06);
+      margin-bottom:16px;
+    }
+    .date-filter-title {
+      color:var(--muted);
+      font-weight:900;
+      font-size:.78rem;
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      margin-bottom:9px;
+    }
+    .date-filter-buttons {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .date-filter-buttons a {
+      text-decoration:none;
+      color:var(--text);
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:10px 14px;
+      font-weight:950;
+      font-size:.82rem;
+    }
+    .date-filter-buttons a.active {
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+      box-shadow:0 8px 18px rgba(91,110,225,.28);
     }
     .period-chip {
       display:inline-flex;
@@ -357,11 +448,6 @@ foreach ($rankedCreatives as $index => $creative) {
       padding:9px 12px;
       font-weight:950;
       font-size:.78rem;
-    }
-    .campaign-detail {
-      margin-top:28px;
-      padding-top:10px;
-      scroll-margin-top:74px;
     }
     .section-heading {
       background:linear-gradient(135deg,#fff 0%,#f7f9ff 100%);
@@ -598,8 +684,8 @@ foreach ($rankedCreatives as $index => $creative) {
     <div class="shell">
       <section class="hero">
         <div>
-          <h1>Dashboard de Campanhas</h1>
-          <p>Visual otimizado para celular, com leitura em cards, atalhos fixos e navegação interna para os anúncios.</p>
+          <h1><?= e($pageTitle) ?></h1>
+          <p><?= e($pageSubtitle) ?></p>
         </div>
         <div class="hero-meta">
           <div>
@@ -607,12 +693,12 @@ foreach ($rankedCreatives as $index => $creative) {
             <strong>9729633853761104</strong>
           </div>
           <div>
-            <span>Conta</span>
-            <strong>Paris Viu - Pré-Paga</strong>
+            <span>Período ativo</span>
+            <strong><?= e($currentPeriod['label']) ?></strong>
           </div>
           <div>
             <span>Estrutura</span>
-            <strong>PHP + HTML em arquivo único</strong>
+            <strong>PHP + HTML com hiperlinks</strong>
           </div>
         </div>
       </section>
@@ -622,15 +708,36 @@ foreach ($rankedCreatives as $index => $creative) {
   <main>
     <div class="shell">
       <nav class="mobile-nav" aria-label="Atalhos">
-        <a href="#campanhas">Campanhas</a>
+        <a href="index.php?periodo=<?= e($selectedPeriod) ?>">Campanhas</a>
         <?php foreach ($campaigns as $campaign): ?>
-          <a href="#<?= e($campaign['slug']) ?>"><?= e(substr($campaign['name'], 1, 12)) ?></a>
+          <a href="index.php?periodo=<?= e($selectedPeriod) ?>&campanha=<?= e($campaign['slug']) ?>">
+            <?= e(substr($campaign['name'], 1, 12)) ?>
+          </a>
         <?php endforeach; ?>
       </nav>
 
-      <section id="campanhas">
-        <div class="period-chip">Dados revisados: 7, 15 e 30 dias conforme retorno da API</div>
+      <section class="date-filter">
+        <div class="date-filter-title">Filtrar período</div>
+        <div class="date-filter-buttons">
+          <?php foreach ($periods as $periodKey => $period): ?>
+            <?php
+              $periodUrl = 'index.php?periodo=' . urlencode($periodKey);
+              if ($selectedCampaign) {
+                  $periodUrl .= '&campanha=' . urlencode($selectedCampaign['slug']);
+              }
+            ?>
+            <a class="<?= $periodKey === $selectedPeriod ? 'active' : '' ?>" href="<?= e($periodUrl) ?>">
+              <?= e($period['label']) ?>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
 
+      <div class="period-chip">
+        <?= e($currentPeriod['label']) ?>: <?= e($currentPeriod['start']) ?> a <?= e($currentPeriod['stop']) ?>
+      </div>
+
+      <?php if (!$selectedCampaign): ?>
         <section class="top-metrics">
           <article>
             <span>Gasto total</span>
@@ -653,7 +760,7 @@ foreach ($rankedCreatives as $index => $creative) {
         <section class="campaign-grid">
           <?php foreach ($campaigns as $campaign): ?>
             <?php $campaignTotals = campaign_totals($campaign); ?>
-            <a class="campaign-link" href="#<?= e($campaign['slug']) ?>">
+            <a class="campaign-link" href="index.php?periodo=<?= e($selectedPeriod) ?>&campanha=<?= e($campaign['slug']) ?>">
               <article class="campaign-card">
                 <div class="campaign-card-top">
                   <div class="campaign-icon">PV</div>
@@ -687,130 +794,163 @@ foreach ($rankedCreatives as $index => $creative) {
             </a>
           <?php endforeach; ?>
         </section>
-      </section>
-
-      <?php foreach ($campaigns as $campaign): ?>
-        <?php $campaignTotals = campaign_totals($campaign); ?>
-        <section id="<?= e($campaign['slug']) ?>" class="campaign-detail">
-          <div class="section-heading">
-            <div>
-              <a class="back-link" href="#campanhas">← Voltar para campanhas</a>
-              <h2><?= e($campaign['name']) ?></h2>
-              <p>Campanha ID: <?= e($campaign['id']) ?></p>
-            </div>
-
-            <div class="detail-budget">
-              <span>Orçamento diário</span>
-              <strong><?= br_money($campaign['dailyBudget']) ?></strong>
-            </div>
+      <?php else: ?>
+        <?php $campaignTotals = campaign_totals($selectedCampaign); ?>
+        <section class="section-heading">
+          <div>
+            <a class="back-link" href="index.php?periodo=<?= e($selectedPeriod) ?>">← Voltar para campanhas</a>
+            <h2><?= e($selectedCampaign['name']) ?></h2>
+            <p>Campanha ID: <?= e($selectedCampaign['id']) ?></p>
           </div>
 
-          <section class="top-metrics compact">
-            <article>
-              <span>Gasto da campanha</span>
-              <strong><?= br_money($campaignTotals['spend']) ?></strong>
-            </article>
-            <article>
-              <span>Alcance</span>
-              <strong><?= br_int($campaignTotals['reach']) ?></strong>
-            </article>
-            <article>
-              <span>Impressões</span>
-              <strong><?= br_int($campaignTotals['impressions']) ?></strong>
-            </article>
-            <article>
-              <span>Anúncios</span>
-              <strong><?= count($campaign['creatives']) ?></strong>
-            </article>
-          </section>
-
-          <div class="ads-title">
-            <h3>Anúncios / Criativos</h3>
-            <span><?= count($campaign['creatives']) ?> anúncio(s) nesta campanha</span>
+          <div class="detail-budget">
+            <span>Orçamento diário</span>
+            <strong><?= br_money($selectedCampaign['dailyBudget']) ?></strong>
           </div>
-
-          <section class="ads-grid">
-            <?php foreach ($campaign['creatives'] as $creative): ?>
-              <?php
-                $efficiency = $creative['spend'] > 0 ? round($creative['reach'] / $creative['spend']) : 0;
-                $costPerThousandReach = $creative['reach'] > 0 ? ($creative['spend'] / $creative['reach']) * 1000 : 0;
-                $frequency = $creative['reach'] > 0 ? $creative['impressions'] / $creative['reach'] : 0;
-                $reachWidth = max(($creative['reach'] / $maxReach) * 100, 3);
-                $spendWidth = max(($creative['spend'] / $maxSpend) * 100, 3);
-              ?>
-              <article class="ad-card">
-                <div class="ad-visual <?= e($creative['platform']) ?>">
-                  <span><?= e(creative_type($creative['name'])) ?></span>
-                  <strong><?= e(platform_label($creative['platform'])) ?></strong>
-                </div>
-
-                <div class="ad-content">
-                  <div class="ad-head">
-                    <div>
-                      <h3><?= e($creative['name']) ?></h3>
-                      <p>Criativo ID: <?= e($creative['id']) ?></p>
-                      <p>Tempo de veiculação: conforme período selecionado</p>
-                    </div>
-                    <b>#<?= e($ranks[$creative['id']] ?? '-') ?> alcance</b>
-                  </div>
-
-                  <div class="ad-dashboard">
-                    <div>
-                      <span>Gasto</span>
-                      <strong><?= br_money($creative['spend']) ?></strong>
-                    </div>
-                    <div>
-                      <span>Alcance</span>
-                      <strong><?= br_int($creative['reach']) ?></strong>
-                    </div>
-                    <div>
-                      <span>Impressões</span>
-                      <strong><?= br_int($creative['impressions']) ?></strong>
-                    </div>
-                    <div>
-                      <span>Custo/1.000 alcance</span>
-                      <strong><?= br_money($costPerThousandReach) ?></strong>
-                    </div>
-                  </div>
-
-                  <div class="ad-bars">
-                    <div class="bar-line">
-                      <span>Alcance</span>
-                      <div><i style="width:<?= e(number_format($reachWidth, 2, '.', '')) ?>%"></i></div>
-                      <b><?= br_int($creative['reach']) ?></b>
-                    </div>
-                    <div class="bar-line">
-                      <span>Gasto</span>
-                      <div><i class="spend" style="width:<?= e(number_format($spendWidth, 2, '.', '')) ?>%"></i></div>
-                      <b><?= br_money($creative['spend']) ?></b>
-                    </div>
-                  </div>
-
-                  <div class="ad-insights">
-                    <div>
-                      <span>Eficiência*</span>
-                      <strong><?= br_int($efficiency) ?> alcances por real</strong>
-                    </div>
-                    <div>
-                      <span>Frequência</span>
-                      <strong><?= e(number_format($frequency, 2, ',', '.')) ?>x</strong>
-                    </div>
-                    <div>
-                      <span>Plataforma</span>
-                      <strong><?= e(platform_label($creative['platform'])) ?></strong>
-                    </div>
-                  </div>
-
-                  <small>* Quantidade de contas alcançadas para cada R$ 1,00 investido.</small>
-                </div>
-              </article>
-            <?php endforeach; ?>
-          </section>
         </section>
-      <?php endforeach; ?>
+
+        <section class="top-metrics compact">
+          <article>
+            <span>Gasto da campanha</span>
+            <strong><?= br_money($campaignTotals['spend']) ?></strong>
+          </article>
+          <article>
+            <span>Alcance</span>
+            <strong><?= br_int($campaignTotals['reach']) ?></strong>
+          </article>
+          <article>
+            <span>Impressões</span>
+            <strong><?= br_int($campaignTotals['impressions']) ?></strong>
+          </article>
+          <article>
+            <span>Anúncios</span>
+            <strong><?= count($selectedCampaign['creatives']) ?></strong>
+          </article>
+        </section>
+
+        <div class="ads-title">
+          <h3>Anúncios / Criativos</h3>
+          <span><?= count($selectedCampaign['creatives']) ?> anúncio(s) nesta campanha</span>
+        </div>
+
+        <section class="ads-grid">
+          <?php foreach ($selectedCampaign['creatives'] as $creative): ?>
+            <?php
+              $efficiency = $creative['spend'] > 0 ? round($creative['reach'] / $creative['spend']) : 0;
+              $costPerThousandReach = $creative['reach'] > 0 ? ($creative['spend'] / $creative['reach']) * 1000 : 0;
+              $frequency = $creative['reach'] > 0 ? $creative['impressions'] / $creative['reach'] : 0;
+              $reachWidth = max(($creative['reach'] / $maxReach) * 100, 3);
+              $spendWidth = max(($creative['spend'] / $maxSpend) * 100, 3);
+            ?>
+            <article class="ad-card">
+              <div class="ad-visual <?= e($creative['platform']) ?>">
+                <span><?= e(creative_type($creative['name'])) ?></span>
+                <strong><?= e(platform_label($creative['platform'])) ?></strong>
+              </div>
+
+              <div class="ad-content">
+                <div class="ad-head">
+                  <div>
+                    <h3><?= e($creative['name']) ?></h3>
+                    <p>Criativo ID: <?= e($creative['id']) ?></p>
+                    <p>Tempo de veiculação: conforme período selecionado</p>
+                  </div>
+                  <b>#<?= e($ranks[$creative['id']] ?? '-') ?> alcance</b>
+                </div>
+
+                <div class="ad-dashboard">
+                  <div>
+                    <span>Gasto</span>
+                    <strong><?= br_money($creative['spend']) ?></strong>
+                  </div>
+                  <div>
+                    <span>Alcance</span>
+                    <strong><?= br_int($creative['reach']) ?></strong>
+                  </div>
+                  <div>
+                    <span>Impressões</span>
+                    <strong><?= br_int($creative['impressions']) ?></strong>
+                  </div>
+                  <div>
+                    <span>Custo/1.000 alcance</span>
+                    <strong><?= br_money($costPerThousandReach) ?></strong>
+                  </div>
+                </div>
+
+                <div class="ad-bars">
+                  <div class="bar-line">
+                    <span>Alcance</span>
+                    <div><i style="width:<?= e(number_format($reachWidth, 2, '.', '')) ?>%"></i></div>
+                    <b><?= br_int($creative['reach']) ?></b>
+                  </div>
+                  <div class="bar-line">
+                    <span>Gasto</span>
+                    <div><i class="spend" style="width:<?= e(number_format($spendWidth, 2, '.', '')) ?>%"></i></div>
+                    <b><?= br_money($creative['spend']) ?></b>
+                  </div>
+                </div>
+
+                <div class="ad-insights">
+                  <div>
+                    <span>Eficiência*</span>
+                    <strong><?= br_int($efficiency) ?> alcances por real</strong>
+                  </div>
+                  <div>
+                    <span>Frequência</span>
+                    <strong><?= e(number_format($frequency, 2, ',', '.')) ?>x</strong>
+                  </div>
+                  <div>
+                    <span>Plataforma</span>
+                    <strong><?= e(platform_label($creative['platform'])) ?></strong>
+                  </div>
+                </div>
+
+                <small>* Quantidade de contas alcançadas para cada R$ 1,00 investido.</small>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        </section>
+      <?php endif; ?>
     </div>
   </main>
 
-  <a class="floating-top" href="#campanhas" aria-label="Voltar ao topo">↑</a>
+  <a class="floating-top" href="index.php?periodo=<?= e($selectedPeriod) ?>" aria-label="Voltar para campanhas">↑</a>
 </body>
 </html>
+'''
+
+(base / "index.php").write_text(php, encoding="utf-8")
+
+readme = """# Dashboard Paris Viu - PHP + HTML com hiperlinks e filtro ativo
+
+## Como usar
+
+Suba o arquivo `index.php` para sua hospedagem com PHP habilitado.
+
+## URLs disponíveis
+
+- `index.php?periodo=7`
+- `index.php?periodo=15`
+- `index.php?periodo=30`
+- `index.php?periodo=7&campanha=campanha-0010-nova-parisviu`
+
+## O que foi feito
+
+- Cada campanha agora é um hiperlink real.
+- O filtro de data fica ativo e aparece na URL.
+- Ao trocar o período dentro de uma campanha, a campanha continua aberta.
+- Ao voltar para campanhas, o período selecionado permanece ativo.
+"""
+
+(base / "README.md").write_text(readme, encoding="utf-8")
+
+zip_path = Path("/mnt/data/parisviu_dashboard_php_hyperlinks_periodo.zip")
+if zip_path.exists():
+    zip_path.unlink()
+
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    for file in base.iterdir():
+        z.write(file, arcname=file.name)
+
+print(f"Arquivo criado: {zip_path}")
+print(f"index.php: {base / 'index.php'}")
