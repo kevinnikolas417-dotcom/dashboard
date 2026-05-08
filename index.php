@@ -1,7 +1,7 @@
 from pathlib import Path
 import zipfile, shutil
 
-base = Path("/mnt/data/admin_dashboard_refeito_do_zero")
+base = Path("/mnt/data/admin_painel_usuarios_empresas")
 if base.exists():
     shutil.rmtree(base)
 base.mkdir()
@@ -11,21 +11,36 @@ session_start();
 
 /*
 |--------------------------------------------------------------------------
-| CONFIGURAÇÃO DO ADMIN
+| PAINEL ADMIN + CADASTRO DE USUÁRIOS
 |--------------------------------------------------------------------------
+| Fluxo:
+| USER -> cria conta
+| ADMIN -> aprova o usuário
+| ADMIN -> define se é admin ou usuário comum
+| ADMIN -> designa as empresas responsáveis
+|
+| Login admin padrão:
 | E-mail: kevinnikolas417@gmail.com
 | Senha: 123456
 |--------------------------------------------------------------------------
 */
 
-$ADMIN_EMAIL = 'kevinnikolas417@gmail.com';
-$ADMIN_PASSWORD = '123456';
+/*
+|--------------------------------------------------------------------------
+| CONFIGURAÇÕES DE ARQUIVOS
+|--------------------------------------------------------------------------
+*/
+
+$DATA_DIR = __DIR__ . '/data';
+$USERS_FILE = $DATA_DIR . '/users.json';
+
+if (!is_dir($DATA_DIR)) {
+    mkdir($DATA_DIR, 0755, true);
+}
 
 /*
 |--------------------------------------------------------------------------
-| DADOS DO DASHBOARD
-|--------------------------------------------------------------------------
-| Edite os dados abaixo quando quiser atualizar empresas, campanhas ou anúncios.
+| EMPRESAS E CAMPANHAS
 |--------------------------------------------------------------------------
 */
 
@@ -214,26 +229,6 @@ function tipo_anuncio($nome) {
     return 'CRIATIVO';
 }
 
-function buscar_empresa($empresas, $slug) {
-    foreach ($empresas as $empresa) {
-        if ($empresa['slug'] == $slug) {
-            return $empresa;
-        }
-    }
-
-    return null;
-}
-
-function buscar_campanha($campanhas, $slug) {
-    foreach ($campanhas as $campanha) {
-        if ($campanha['slug'] == $slug) {
-            return $campanha;
-        }
-    }
-
-    return null;
-}
-
 function totais_campanha($campanha) {
     $total = array(
         'gasto' => 0,
@@ -287,6 +282,26 @@ function todos_anuncios($empresas) {
     return $lista;
 }
 
+function buscar_empresa($empresas, $slug) {
+    foreach ($empresas as $empresa) {
+        if ($empresa['slug'] == $slug) {
+            return $empresa;
+        }
+    }
+
+    return null;
+}
+
+function buscar_campanha($campanhas, $slug) {
+    foreach ($campanhas as $campanha) {
+        if ($campanha['slug'] == $slug) {
+            return $campanha;
+        }
+    }
+
+    return null;
+}
+
 function total_campanhas_geral($empresas) {
     $total = 0;
 
@@ -297,11 +312,100 @@ function total_campanhas_geral($empresas) {
     return $total;
 }
 
+function empresa_por_slug_lista($empresas) {
+    $lista = array();
+
+    foreach ($empresas as $empresa) {
+        $lista[$empresa['slug']] = $empresa;
+    }
+
+    return $lista;
+}
+
 /*
 |--------------------------------------------------------------------------
-| LOGIN / LOGOUT
+| FUNÇÕES DE USUÁRIOS
 |--------------------------------------------------------------------------
 */
+
+function carregar_usuarios($arquivo) {
+    if (!file_exists($arquivo)) {
+        return array();
+    }
+
+    $json = file_get_contents($arquivo);
+    $usuarios = json_decode($json, true);
+
+    if (!is_array($usuarios)) {
+        return array();
+    }
+
+    return $usuarios;
+}
+
+function salvar_usuarios($arquivo, $usuarios) {
+    file_put_contents($arquivo, json_encode($usuarios, JSON_PRETTY_PRINT));
+}
+
+function buscar_usuario_por_email($usuarios, $email) {
+    foreach ($usuarios as $indice => $usuario) {
+        if (strtolower($usuario['email']) == strtolower($email)) {
+            return array('indice' => $indice, 'usuario' => $usuario);
+        }
+    }
+
+    return null;
+}
+
+function buscar_usuario_por_id($usuarios, $id) {
+    foreach ($usuarios as $indice => $usuario) {
+        if ((string)$usuario['id'] == (string)$id) {
+            return array('indice' => $indice, 'usuario' => $usuario);
+        }
+    }
+
+    return null;
+}
+
+function criar_admin_inicial($arquivo) {
+    $usuarios = carregar_usuarios($arquivo);
+
+    $existe_admin = false;
+
+    foreach ($usuarios as $usuario) {
+        if (isset($usuario['email']) && strtolower($usuario['email']) == 'kevinnikolas417@gmail.com') {
+            $existe_admin = true;
+            break;
+        }
+    }
+
+    if (!$existe_admin) {
+        $usuarios[] = array(
+            'id' => uniqid('user_'),
+            'nome' => 'Admin',
+            'email' => 'kevinnikolas417@gmail.com',
+            'senha_hash' => password_hash('123456', PASSWORD_DEFAULT),
+            'tipo' => 'admin',
+            'status' => 'ativo',
+            'empresas' => array('parisviu'),
+            'criado_em' => date('Y-m-d H:i:s')
+        );
+
+        salvar_usuarios($arquivo, $usuarios);
+    }
+}
+
+criar_admin_inicial($USERS_FILE);
+$usuarios = carregar_usuarios($USERS_FILE);
+
+/*
+|--------------------------------------------------------------------------
+| LOGIN / LOGOUT / CADASTRO
+|--------------------------------------------------------------------------
+*/
+
+$mensagem = '';
+$erro = '';
 
 if (isset($_GET['logout'])) {
     session_destroy();
@@ -309,23 +413,102 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-$erro_login = '';
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['acao'] == 'cadastro') {
+    $nome = isset($_POST['nome']) ? trim($_POST['nome']) : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $senha = isset($_POST['senha']) ? trim($_POST['senha']) : '';
 
-    if ($email == $ADMIN_EMAIL && $senha == $ADMIN_PASSWORD) {
-        $_SESSION['admin_logado'] = true;
-        $_SESSION['admin_email'] = $email;
-        header('Location: index.php');
-        exit;
+    if ($nome == '' || $email == '' || $senha == '') {
+        $erro = 'Preencha todos os campos para criar a conta.';
+    } elseif (buscar_usuario_por_email($usuarios, $email)) {
+        $erro = 'Este e-mail já possui cadastro.';
     } else {
-        $erro_login = 'E-mail ou senha inválidos.';
+        $usuarios[] = array(
+            'id' => uniqid('user_'),
+            'nome' => $nome,
+            'email' => $email,
+            'senha_hash' => password_hash($senha, PASSWORD_DEFAULT),
+            'tipo' => 'usuario',
+            'status' => 'pendente',
+            'empresas' => array(),
+            'criado_em' => date('Y-m-d H:i:s')
+        );
+
+        salvar_usuarios($USERS_FILE, $usuarios);
+        $usuarios = carregar_usuarios($USERS_FILE);
+        $mensagem = 'Conta criada com sucesso. Aguarde o admin aprovar seu acesso.';
     }
 }
 
-$logado = isset($_SESSION['admin_logado']) && $_SESSION['admin_logado'] == true;
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['acao'] == 'login') {
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $senha = isset($_POST['senha']) ? trim($_POST['senha']) : '';
+
+    $busca = buscar_usuario_por_email($usuarios, $email);
+
+    if (!$busca) {
+        $erro = 'E-mail ou senha inválidos.';
+    } else {
+        $usuario = $busca['usuario'];
+
+        if (!password_verify($senha, $usuario['senha_hash'])) {
+            $erro = 'E-mail ou senha inválidos.';
+        } elseif ($usuario['status'] != 'ativo') {
+            $erro = 'Seu acesso ainda não foi aprovado pelo admin.';
+        } else {
+            $_SESSION['usuario_id'] = $usuario['id'];
+            $_SESSION['usuario_nome'] = $usuario['nome'];
+            $_SESSION['usuario_email'] = $usuario['email'];
+            $_SESSION['usuario_tipo'] = $usuario['tipo'];
+            header('Location: index.php');
+            exit;
+        }
+    }
+}
+
+$logado = isset($_SESSION['usuario_id']);
+$usuario_logado = null;
+
+if ($logado) {
+    $busca_logado = buscar_usuario_por_id($usuarios, $_SESSION['usuario_id']);
+
+    if ($busca_logado) {
+        $usuario_logado = $busca_logado['usuario'];
+    } else {
+        session_destroy();
+        header('Location: index.php');
+        exit;
+    }
+}
+
+$is_admin = $usuario_logado && $usuario_logado['tipo'] == 'admin';
+
+/*
+|--------------------------------------------------------------------------
+| AÇÕES DO ADMIN
+|--------------------------------------------------------------------------
+*/
+
+if ($logado && $is_admin && $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['acao']) && $_POST['acao'] == 'salvar_usuario') {
+    $id_usuario = isset($_POST['id_usuario']) ? $_POST['id_usuario'] : '';
+    $novo_status = isset($_POST['status']) ? $_POST['status'] : 'pendente';
+    $novo_tipo = isset($_POST['tipo']) ? $_POST['tipo'] : 'usuario';
+    $novas_empresas = isset($_POST['empresas']) && is_array($_POST['empresas']) ? $_POST['empresas'] : array();
+
+    $busca = buscar_usuario_por_id($usuarios, $id_usuario);
+
+    if ($busca) {
+        $indice = $busca['indice'];
+
+        $usuarios[$indice]['status'] = $novo_status;
+        $usuarios[$indice]['tipo'] = $novo_tipo;
+        $usuarios[$indice]['empresas'] = $novas_empresas;
+
+        salvar_usuarios($USERS_FILE, $usuarios);
+        $usuarios = carregar_usuarios($USERS_FILE);
+        $mensagem = 'Usuário atualizado com sucesso.';
+    }
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -343,8 +526,21 @@ $periodo_atual = $periodos[$periodo_selecionado];
 
 $empresa_slug = isset($_GET['empresa']) ? $_GET['empresa'] : '';
 $campanha_slug = isset($_GET['campanha']) ? $_GET['campanha'] : '';
+$pagina = isset($_GET['pagina']) ? $_GET['pagina'] : '';
 
-$empresa_selecionada = $empresa_slug ? buscar_empresa($empresas, $empresa_slug) : null;
+$empresas_disponiveis = array();
+
+if ($logado && $is_admin) {
+    $empresas_disponiveis = $empresas;
+} elseif ($logado && $usuario_logado) {
+    foreach ($empresas as $empresa) {
+        if (in_array($empresa['slug'], $usuario_logado['empresas'])) {
+            $empresas_disponiveis[] = $empresa;
+        }
+    }
+}
+
+$empresa_selecionada = $empresa_slug ? buscar_empresa($empresas_disponiveis, $empresa_slug) : null;
 $campanha_selecionada = null;
 
 if ($empresa_selecionada && $campanha_slug) {
@@ -352,7 +548,6 @@ if ($empresa_selecionada && $campanha_slug) {
 }
 
 $anuncios_geral = todos_anuncios($empresas);
-
 $max_alcance = 1;
 $max_gasto = 1;
 
@@ -367,6 +562,7 @@ foreach ($anuncios_geral as $anuncio) {
 }
 
 $ranks = $anuncios_geral;
+
 usort($ranks, function($a, $b) {
     if ($a['alcance'] == $b['alcance']) {
         return 0;
@@ -389,7 +585,7 @@ foreach ($ranks as $anuncio) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Painel Admin</title>
 
     <style>
         :root {
@@ -405,16 +601,14 @@ foreach ($ranks as $anuncio) {
             --green-bg: #ecfdf5;
             --danger: #b91c1c;
             --danger-bg: #fef2f2;
+            --warning: #92400e;
+            --warning-bg: #fffbeb;
             --shadow: 0 14px 34px rgba(15, 23, 42, .10);
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
             margin: 0;
@@ -426,24 +620,28 @@ foreach ($ranks as $anuncio) {
                 linear-gradient(135deg, #f8fbff 0%, #edf2fb 100%);
         }
 
-        a {
-            color: inherit;
-        }
+        a { color: inherit; }
 
         .shell {
             width: min(1160px, calc(100% - 28px));
             margin: 0 auto;
         }
 
-        .login-page {
+        .auth-page {
             min-height: 100vh;
             display: grid;
             place-items: center;
             padding: 22px 14px;
         }
 
-        .login-card {
-            width: min(460px, 100%);
+        .auth-grid {
+            width: min(980px, 100%);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+
+        .auth-card {
             background: #ffffff;
             border: 1px solid var(--border);
             border-radius: 28px;
@@ -451,24 +649,24 @@ foreach ($ranks as $anuncio) {
             overflow: hidden;
         }
 
-        .login-header {
+        .auth-header {
             color: #ffffff;
             padding: 28px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
         }
 
-        .login-header h1 {
+        .auth-header h1 {
             margin: 0 0 8px;
             font-size: 2rem;
         }
 
-        .login-header p {
+        .auth-header p {
             margin: 0;
             color: rgba(255, 255, 255, .86);
             line-height: 1.45;
         }
 
-        .login-form {
+        .auth-form {
             padding: 24px;
             display: grid;
             gap: 14px;
@@ -487,21 +685,24 @@ foreach ($ranks as $anuncio) {
             letter-spacing: .06em;
         }
 
-        .field input {
+        .field input,
+        .field select {
             width: 100%;
             border: 1px solid var(--border);
             border-radius: 16px;
             padding: 13px 14px;
             font-size: 1rem;
             outline: none;
+            background: #ffffff;
         }
 
-        .field input:focus {
+        .field input:focus,
+        .field select:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 4px rgba(91, 110, 225, .14);
         }
 
-        .login-button {
+        .button {
             border: none;
             cursor: pointer;
             color: #ffffff;
@@ -510,20 +711,38 @@ foreach ($ranks as $anuncio) {
             font-size: 1rem;
             font-weight: 900;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
+            text-decoration: none;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        .login-error {
-            color: var(--danger);
-            background: var(--danger-bg);
-            border: 1px solid #fecaca;
+        .button.secondary {
+            background: #ffffff;
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+        }
+
+        .alert {
             border-radius: 14px;
             padding: 10px 12px;
             font-weight: 800;
+            margin-bottom: 14px;
         }
 
-        header {
-            padding: 18px 0 14px;
+        .alert.error {
+            color: var(--danger);
+            background: var(--danger-bg);
+            border: 1px solid #fecaca;
         }
+
+        .alert.success {
+            color: var(--green);
+            background: var(--green-bg);
+            border: 1px solid #bbf7d0;
+        }
+
+        header { padding: 18px 0 14px; }
 
         .hero {
             color: #ffffff;
@@ -571,9 +790,7 @@ foreach ($ranks as $anuncio) {
             font-size: .96rem;
         }
 
-        main {
-            padding: 8px 0 90px;
-        }
+        main { padding: 8px 0 90px; }
 
         .nav {
             position: sticky;
@@ -787,6 +1004,12 @@ foreach ($ranks as $anuncio) {
             margin-top: 8px;
         }
 
+        .status-badge.warning {
+            color: var(--warning);
+            background: var(--warning-bg);
+            border-color: #fde68a;
+        }
+
         .heading {
             background: linear-gradient(135deg, #ffffff 0%, #f7f9ff 100%);
             border: 1px solid var(--border);
@@ -966,6 +1189,57 @@ foreach ($ranks as $anuncio) {
             font-size: .76rem;
         }
 
+        .admin-table {
+            display: grid;
+            gap: 14px;
+        }
+
+        .user-card {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 16px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+            display: grid;
+            gap: 14px;
+        }
+
+        .user-card h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .user-card p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: .82rem;
+            overflow-wrap: anywhere;
+        }
+
+        .admin-form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .checkbox-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .checkbox-pill {
+            border: 1px solid var(--border);
+            background: #ffffff;
+            border-radius: 999px;
+            padding: 9px 12px;
+            font-weight: 800;
+            color: #334155;
+        }
+
+        .checkbox-pill input {
+            margin-right: 6px;
+        }
+
         .floating-top {
             position: fixed;
             right: 14px;
@@ -984,6 +1258,10 @@ foreach ($ranks as $anuncio) {
         }
 
         @media (min-width: 680px) {
+            .auth-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
             header {
                 padding-top: 30px;
             }
@@ -1032,30 +1310,66 @@ foreach ($ranks as $anuncio) {
 <body>
 <?php if (!$logado): ?>
 
-    <section class="login-page">
-        <div class="login-card">
-            <div class="login-header">
-                <h1>Admin</h1>
-                <p>Acesse para visualizar empresas ativas, campanhas e anúncios.</p>
+    <section class="auth-page">
+        <div class="auth-grid">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h1>Entrar</h1>
+                    <p>Acesse sua conta para visualizar empresas, campanhas e anúncios liberados.</p>
+                </div>
+
+                <form class="auth-form" method="post" action="index.php">
+                    <?php if ($erro): ?>
+                        <div class="alert error"><?php echo esc($erro); ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($mensagem): ?>
+                        <div class="alert success"><?php echo esc($mensagem); ?></div>
+                    <?php endif; ?>
+
+                    <input type="hidden" name="acao" value="login">
+
+                    <div class="field">
+                        <label for="login_email">E-mail</label>
+                        <input type="email" id="login_email" name="email" placeholder="seuemail@exemplo.com" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="login_senha">Senha</label>
+                        <input type="password" id="login_senha" name="senha" placeholder="Digite sua senha" required>
+                    </div>
+
+                    <button type="submit" class="button">Entrar</button>
+                </form>
             </div>
 
-            <form class="login-form" method="post" action="index.php">
-                <?php if ($erro_login): ?>
-                    <div class="login-error"><?php echo esc($erro_login); ?></div>
-                <?php endif; ?>
-
-                <div class="field">
-                    <label for="email">E-mail</label>
-                    <input type="email" id="email" name="email" value="<?php echo esc($ADMIN_EMAIL); ?>" required>
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h1>Criar conta</h1>
+                    <p>Crie sua conta e aguarde o admin aprovar seu acesso.</p>
                 </div>
 
-                <div class="field">
-                    <label for="senha">Senha</label>
-                    <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required>
-                </div>
+                <form class="auth-form" method="post" action="index.php">
+                    <input type="hidden" name="acao" value="cadastro">
 
-                <button type="submit" class="login-button">Entrar</button>
-            </form>
+                    <div class="field">
+                        <label for="cadastro_nome">Nome</label>
+                        <input type="text" id="cadastro_nome" name="nome" placeholder="Seu nome" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="cadastro_email">E-mail</label>
+                        <input type="email" id="cadastro_email" name="email" placeholder="seuemail@exemplo.com" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="cadastro_senha">Senha</label>
+                        <input type="password" id="cadastro_senha" name="senha" placeholder="Crie uma senha" required>
+                    </div>
+
+                    <button type="submit" class="button">Criar conta</button>
+                </form>
+            </div>
         </div>
     </section>
 
@@ -1065,24 +1379,30 @@ foreach ($ranks as $anuncio) {
         <div class="shell">
             <section class="hero">
                 <div>
-                    <h1>Admin Dashboard</h1>
-                    <p>Visualize empresas ativas, campanhas e anúncios em uma área protegida.</p>
+                    <h1>Painel de Acesso</h1>
+                    <p>
+                        <?php if ($is_admin): ?>
+                            Você está conectado como admin. Gerencie usuários, empresas e campanhas.
+                        <?php else: ?>
+                            Você está conectado como usuário. Visualize apenas as empresas liberadas pelo admin.
+                        <?php endif; ?>
+                    </p>
                 </div>
 
                 <div class="hero-meta">
                     <div>
                         <span>Usuário</span>
-                        <strong><?php echo esc($_SESSION['admin_email']); ?></strong>
+                        <strong><?php echo esc($usuario_logado['nome']); ?></strong>
+                    </div>
+
+                    <div>
+                        <span>Perfil</span>
+                        <strong><?php echo esc($usuario_logado['tipo']); ?></strong>
                     </div>
 
                     <div>
                         <span>Período ativo</span>
                         <strong><?php echo esc($periodo_atual['nome']); ?></strong>
-                    </div>
-
-                    <div>
-                        <span>Status</span>
-                        <strong>Admin conectado</strong>
                     </div>
                 </div>
             </section>
@@ -1094,7 +1414,11 @@ foreach ($ranks as $anuncio) {
             <nav class="nav">
                 <a href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>">Empresas</a>
 
-                <?php foreach ($empresas as $empresa_nav): ?>
+                <?php if ($is_admin): ?>
+                    <a href="index.php?pagina=usuarios&periodo=<?php echo esc($periodo_selecionado); ?>">Usuários</a>
+                <?php endif; ?>
+
+                <?php foreach ($empresas_disponiveis as $empresa_nav): ?>
                     <a href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_nav['slug']); ?>">
                         <?php echo esc($empresa_nav['nome']); ?>
                     </a>
@@ -1103,339 +1427,415 @@ foreach ($ranks as $anuncio) {
                 <a class="logout" href="index.php?logout=1">Sair</a>
             </nav>
 
-            <section class="date-filter">
-                <div class="date-filter-title">Filtrar período</div>
+            <?php if ($mensagem): ?>
+                <div class="alert success"><?php echo esc($mensagem); ?></div>
+            <?php endif; ?>
 
-                <div class="date-filter-buttons">
-                    <?php foreach ($periodos as $chave_periodo => $periodo): ?>
-                        <?php
-                            $url_periodo = 'index.php?periodo=' . urlencode($chave_periodo);
+            <?php if ($erro): ?>
+                <div class="alert error"><?php echo esc($erro); ?></div>
+            <?php endif; ?>
 
-                            if ($empresa_selecionada) {
-                                $url_periodo .= '&empresa=' . urlencode($empresa_selecionada['slug']);
-                            }
-
-                            if ($campanha_selecionada) {
-                                $url_periodo .= '&campanha=' . urlencode($campanha_selecionada['slug']);
-                            }
-
-                            $classe_periodo = ($chave_periodo == $periodo_selecionado) ? 'active' : '';
-                        ?>
-
-                        <a class="<?php echo esc($classe_periodo); ?>" href="<?php echo esc($url_periodo); ?>">
-                            <?php echo esc($periodo['nome']); ?>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-
-            <div class="period-chip">
-                <?php echo esc($periodo_atual['nome']); ?>:
-                <?php echo esc($periodo_atual['inicio']); ?> a
-                <?php echo esc($periodo_atual['fim']); ?>
-            </div>
-
-            <?php if (!$empresa_selecionada): ?>
-
-                <section class="metrics">
-                    <article class="metric">
-                        <span>Empresas ativas</span>
-                        <strong><?php echo count($empresas); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Campanhas</span>
-                        <strong><?php echo total_campanhas_geral($empresas); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Criativos</span>
-                        <strong><?php echo count($anuncios_geral); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Alcance total</span>
-                        <strong>
-                            <?php
-                                $alcance_total_geral = 0;
-                                foreach ($anuncios_geral as $a) {
-                                    $alcance_total_geral += $a['alcance'];
-                                }
-                                echo numero($alcance_total_geral);
-                            ?>
-                        </strong>
-                    </article>
-                </section>
-
-                <section class="grid">
-                    <?php foreach ($empresas as $empresa): ?>
-                        <?php $te = totais_empresa($empresa); ?>
-
-                        <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa['slug']); ?>">
-                            <article class="card">
-                                <div class="card-top">
-                                    <div class="avatar">PV</div>
-
-                                    <div>
-                                        <h2><?php echo esc($empresa['nome']); ?></h2>
-                                        <p><?php echo esc($empresa['descricao']); ?></p>
-                                        <span class="status-badge"><?php echo esc($empresa['status']); ?></span>
-                                    </div>
-                                </div>
-
-                                <div class="card-metrics">
-                                    <div class="mini-box">
-                                        <span>Campanhas</span>
-                                        <strong><?php echo esc($te['campanhas']); ?></strong>
-                                    </div>
-
-                                    <div class="mini-box">
-                                        <span>Anúncios</span>
-                                        <strong><?php echo esc($te['anuncios']); ?></strong>
-                                    </div>
-
-                                    <div class="mini-box">
-                                        <span>Gasto</span>
-                                        <strong><?php echo dinheiro($te['gasto']); ?></strong>
-                                    </div>
-
-                                    <div class="mini-box">
-                                        <span>Alcance</span>
-                                        <strong><?php echo numero($te['alcance']); ?></strong>
-                                    </div>
-                                </div>
-
-                                <div class="open-label">Abrir empresa</div>
-                            </article>
-                        </a>
-                    <?php endforeach; ?>
-                </section>
-
-            <?php elseif ($empresa_selecionada && !$campanha_selecionada): ?>
-
-                <?php $te = totais_empresa($empresa_selecionada); ?>
+            <?php if ($pagina == 'usuarios' && $is_admin): ?>
 
                 <section class="heading">
                     <div>
-                        <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>">
-                            ← Voltar para empresas
-                        </a>
-
-                        <h2><?php echo esc($empresa_selecionada['nome']); ?></h2>
-                        <p><?php echo esc($empresa_selecionada['descricao']); ?></p>
-                    </div>
-
-                    <div class="mini-box">
-                        <span>Status</span>
-                        <strong><?php echo esc($empresa_selecionada['status']); ?></strong>
+                        <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>">← Voltar</a>
+                        <h2>Gerenciar usuários</h2>
+                        <p>Aprove usuários, defina o perfil e escolha as empresas responsáveis.</p>
                     </div>
                 </section>
 
-                <section class="metrics">
-                    <article class="metric">
-                        <span>Gasto</span>
-                        <strong><?php echo dinheiro($te['gasto']); ?></strong>
-                    </article>
+                <section class="admin-table">
+                    <?php foreach ($usuarios as $usuario_item): ?>
+                        <article class="user-card">
+                            <div>
+                                <h3><?php echo esc($usuario_item['nome']); ?></h3>
+                                <p><?php echo esc($usuario_item['email']); ?></p>
+                                <p>Criado em: <?php echo esc($usuario_item['criado_em']); ?></p>
 
-                    <article class="metric">
-                        <span>Alcance</span>
-                        <strong><?php echo numero($te['alcance']); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Campanhas</span>
-                        <strong><?php echo esc($te['campanhas']); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Anúncios</span>
-                        <strong><?php echo esc($te['anuncios']); ?></strong>
-                    </article>
-                </section>
-
-                <section class="grid">
-                    <?php foreach ($empresa_selecionada['campanhas'] as $campanha): ?>
-                        <?php $tc = totais_campanha($campanha); ?>
-
-                        <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>&campanha=<?php echo esc($campanha['slug']); ?>">
-                            <article class="card">
-                                <div class="card-top">
-                                    <div class="avatar">PV</div>
-
-                                    <div>
-                                        <h2><?php echo esc($campanha['nome']); ?></h2>
-                                        <p>Campanha ID: <?php echo esc($campanha['id']); ?></p>
-                                    </div>
-                                </div>
-
-                                <div class="card-metrics">
-                                    <div class="mini-box">
-                                        <span>Orçamento diário</span>
-                                        <strong><?php echo dinheiro($campanha['orcamento_diario']); ?></strong>
-                                    </div>
-
-                                    <div class="mini-box">
-                                        <span>Gasto</span>
-                                        <strong><?php echo dinheiro($tc['gasto']); ?></strong>
-                                    </div>
-
-                                    <div class="mini-box">
-                                        <span>Alcance</span>
-                                        <strong><?php echo numero($tc['alcance']); ?></strong>
-                                    </div>
-
-                                    <div class="mini-box">
-                                        <span>Anúncios</span>
-                                        <strong><?php echo esc($tc['anuncios']); ?></strong>
-                                    </div>
-                                </div>
-
-                                <div class="open-label">Abrir anúncios da campanha</div>
-                            </article>
-                        </a>
-                    <?php endforeach; ?>
-                </section>
-
-            <?php elseif ($empresa_selecionada && $campanha_selecionada): ?>
-
-                <?php $tc = totais_campanha($campanha_selecionada); ?>
-
-                <section class="heading">
-                    <div>
-                        <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>">
-                            ← Voltar para campanhas
-                        </a>
-
-                        <h2><?php echo esc($campanha_selecionada['nome']); ?></h2>
-                        <p>Campanha ID: <?php echo esc($campanha_selecionada['id']); ?></p>
-                    </div>
-
-                    <div class="mini-box">
-                        <span>Orçamento diário</span>
-                        <strong><?php echo dinheiro($campanha_selecionada['orcamento_diario']); ?></strong>
-                    </div>
-                </section>
-
-                <section class="metrics">
-                    <article class="metric">
-                        <span>Gasto da campanha</span>
-                        <strong><?php echo dinheiro($tc['gasto']); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Alcance</span>
-                        <strong><?php echo numero($tc['alcance']); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Impressões</span>
-                        <strong><?php echo numero($tc['impressoes']); ?></strong>
-                    </article>
-
-                    <article class="metric">
-                        <span>Anúncios</span>
-                        <strong><?php echo esc($tc['anuncios']); ?></strong>
-                    </article>
-                </section>
-
-                <div class="ads-title">
-                    <h3>Anúncios / Criativos</h3>
-                    <span><?php echo count($campanha_selecionada['anuncios']); ?> anúncio(s) nesta campanha</span>
-                </div>
-
-                <section class="ads-grid">
-                    <?php foreach ($campanha_selecionada['anuncios'] as $anuncio): ?>
-                        <?php
-                            $eficiencia = $anuncio['gasto'] > 0 ? round($anuncio['alcance'] / $anuncio['gasto']) : 0;
-                            $custo_mil_alcance = $anuncio['alcance'] > 0 ? ($anuncio['gasto'] / $anuncio['alcance']) * 1000 : 0;
-                            $frequencia = $anuncio['alcance'] > 0 ? $anuncio['impressoes'] / $anuncio['alcance'] : 0;
-                            $largura_alcance = max(($anuncio['alcance'] / $max_alcance) * 100, 3);
-                            $largura_gasto = max(($anuncio['gasto'] / $max_gasto) * 100, 3);
-                        ?>
-
-                        <article class="ad-card">
-                            <div class="ad-visual <?php echo esc($anuncio['plataforma']); ?>">
-                                <span><?php echo esc(tipo_anuncio($anuncio['nome'])); ?></span>
-                                <strong><?php echo esc(nome_plataforma($anuncio['plataforma'])); ?></strong>
+                                <?php if ($usuario_item['status'] == 'ativo'): ?>
+                                    <span class="status-badge">Ativo</span>
+                                <?php else: ?>
+                                    <span class="status-badge warning">Pendente</span>
+                                <?php endif; ?>
                             </div>
 
-                            <div class="ad-content">
-                                <div class="ad-head">
-                                    <div>
-                                        <h3><?php echo esc($anuncio['nome']); ?></h3>
-                                        <p>Criativo ID: <?php echo esc($anuncio['id']); ?></p>
-                                        <p>Tempo de veiculação: conforme período selecionado</p>
-                                    </div>
+                            <form class="admin-form" method="post" action="index.php?pagina=usuarios&periodo=<?php echo esc($periodo_selecionado); ?>">
+                                <input type="hidden" name="acao" value="salvar_usuario">
+                                <input type="hidden" name="id_usuario" value="<?php echo esc($usuario_item['id']); ?>">
 
-                                    <span class="rank">
-                                        #<?php echo isset($ranking[$anuncio['id']]) ? esc($ranking[$anuncio['id']]) : '-'; ?> alcance
-                                    </span>
+                                <div class="field">
+                                    <label>Status</label>
+                                    <select name="status">
+                                        <option value="pendente" <?php echo $usuario_item['status'] == 'pendente' ? 'selected' : ''; ?>>Pendente</option>
+                                        <option value="ativo" <?php echo $usuario_item['status'] == 'ativo' ? 'selected' : ''; ?>>Ativo</option>
+                                    </select>
                                 </div>
 
-                                <div class="ad-kpis">
-                                    <div class="ad-kpi">
-                                        <span>Gasto</span>
-                                        <strong><?php echo dinheiro($anuncio['gasto']); ?></strong>
-                                    </div>
-
-                                    <div class="ad-kpi">
-                                        <span>Alcance</span>
-                                        <strong><?php echo numero($anuncio['alcance']); ?></strong>
-                                    </div>
-
-                                    <div class="ad-kpi">
-                                        <span>Impressões</span>
-                                        <strong><?php echo numero($anuncio['impressoes']); ?></strong>
-                                    </div>
-
-                                    <div class="ad-kpi">
-                                        <span>Custo/1.000 alcance</span>
-                                        <strong><?php echo dinheiro($custo_mil_alcance); ?></strong>
-                                    </div>
+                                <div class="field">
+                                    <label>Tipo de acesso</label>
+                                    <select name="tipo">
+                                        <option value="usuario" <?php echo $usuario_item['tipo'] == 'usuario' ? 'selected' : ''; ?>>Usuário</option>
+                                        <option value="admin" <?php echo $usuario_item['tipo'] == 'admin' ? 'selected' : ''; ?>>Admin</option>
+                                    </select>
                                 </div>
 
-                                <div class="bar-list">
-                                    <div class="bar-row">
-                                        <span>Alcance</span>
-                                        <div class="bar-track">
-                                            <i class="bar-fill" style="width: <?php echo esc(number_format($largura_alcance, 2, '.', '')); ?>%;"></i>
-                                        </div>
-                                        <strong><?php echo numero($anuncio['alcance']); ?></strong>
-                                    </div>
-
-                                    <div class="bar-row">
-                                        <span>Gasto</span>
-                                        <div class="bar-track">
-                                            <i class="bar-fill spend" style="width: <?php echo esc(number_format($largura_gasto, 2, '.', '')); ?>%;"></i>
-                                        </div>
-                                        <strong><?php echo dinheiro($anuncio['gasto']); ?></strong>
+                                <div class="field">
+                                    <label>Empresas responsáveis</label>
+                                    <div class="checkbox-list">
+                                        <?php foreach ($empresas as $empresa_check): ?>
+                                            <?php
+                                                $checked = in_array($empresa_check['slug'], $usuario_item['empresas']) ? 'checked' : '';
+                                            ?>
+                                            <label class="checkbox-pill">
+                                                <input type="checkbox" name="empresas[]" value="<?php echo esc($empresa_check['slug']); ?>" <?php echo $checked; ?>>
+                                                <?php echo esc($empresa_check['nome']); ?>
+                                            </label>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
 
-                                <div class="ad-insights">
-                                    <div class="ad-insight">
-                                        <span>Eficiência*</span>
-                                        <strong><?php echo numero($eficiencia); ?> alcances por real</strong>
-                                    </div>
-
-                                    <div class="ad-insight">
-                                        <span>Frequência</span>
-                                        <strong><?php echo esc(number_format($frequencia, 2, ',', '.')); ?>x</strong>
-                                    </div>
-
-                                    <div class="ad-insight">
-                                        <span>Plataforma</span>
-                                        <strong><?php echo esc(nome_plataforma($anuncio['plataforma'])); ?></strong>
-                                    </div>
-                                </div>
-
-                                <div class="note">
-                                    * Quantidade de contas alcançadas para cada R$ 1,00 investido.
-                                </div>
-                            </div>
+                                <button class="button" type="submit">Salvar usuário</button>
+                            </form>
                         </article>
                     <?php endforeach; ?>
                 </section>
+
+            <?php else: ?>
+
+                <section class="date-filter">
+                    <div class="date-filter-title">Filtrar período</div>
+
+                    <div class="date-filter-buttons">
+                        <?php foreach ($periodos as $chave_periodo => $periodo): ?>
+                            <?php
+                                $url_periodo = 'index.php?periodo=' . urlencode($chave_periodo);
+
+                                if ($empresa_selecionada) {
+                                    $url_periodo .= '&empresa=' . urlencode($empresa_selecionada['slug']);
+                                }
+
+                                if ($campanha_selecionada) {
+                                    $url_periodo .= '&campanha=' . urlencode($campanha_selecionada['slug']);
+                                }
+
+                                $classe_periodo = ($chave_periodo == $periodo_selecionado) ? 'active' : '';
+                            ?>
+
+                            <a class="<?php echo esc($classe_periodo); ?>" href="<?php echo esc($url_periodo); ?>">
+                                <?php echo esc($periodo['nome']); ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+
+                <div class="period-chip">
+                    <?php echo esc($periodo_atual['nome']); ?>:
+                    <?php echo esc($periodo_atual['inicio']); ?> a
+                    <?php echo esc($periodo_atual['fim']); ?>
+                </div>
+
+                <?php if (count($empresas_disponiveis) == 0): ?>
+
+                    <div class="alert error">
+                        Você ainda não possui empresas liberadas. Aguarde o admin designar uma empresa para sua conta.
+                    </div>
+
+                <?php elseif (!$empresa_selecionada): ?>
+
+                    <section class="metrics">
+                        <article class="metric">
+                            <span>Empresas liberadas</span>
+                            <strong><?php echo count($empresas_disponiveis); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Campanhas</span>
+                            <strong><?php echo total_campanhas_geral($empresas_disponiveis); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Criativos</span>
+                            <strong><?php echo count(todos_anuncios($empresas_disponiveis)); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Perfil</span>
+                            <strong><?php echo esc($usuario_logado['tipo']); ?></strong>
+                        </article>
+                    </section>
+
+                    <section class="grid">
+                        <?php foreach ($empresas_disponiveis as $empresa): ?>
+                            <?php $te = totais_empresa($empresa); ?>
+
+                            <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa['slug']); ?>">
+                                <article class="card">
+                                    <div class="card-top">
+                                        <div class="avatar">PV</div>
+
+                                        <div>
+                                            <h2><?php echo esc($empresa['nome']); ?></h2>
+                                            <p><?php echo esc($empresa['descricao']); ?></p>
+                                            <span class="status-badge"><?php echo esc($empresa['status']); ?></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-metrics">
+                                        <div class="mini-box">
+                                            <span>Campanhas</span>
+                                            <strong><?php echo esc($te['campanhas']); ?></strong>
+                                        </div>
+
+                                        <div class="mini-box">
+                                            <span>Anúncios</span>
+                                            <strong><?php echo esc($te['anuncios']); ?></strong>
+                                        </div>
+
+                                        <div class="mini-box">
+                                            <span>Gasto</span>
+                                            <strong><?php echo dinheiro($te['gasto']); ?></strong>
+                                        </div>
+
+                                        <div class="mini-box">
+                                            <span>Alcance</span>
+                                            <strong><?php echo numero($te['alcance']); ?></strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="open-label">Abrir empresa</div>
+                                </article>
+                            </a>
+                        <?php endforeach; ?>
+                    </section>
+
+                <?php elseif ($empresa_selecionada && !$campanha_selecionada): ?>
+
+                    <?php $te = totais_empresa($empresa_selecionada); ?>
+
+                    <section class="heading">
+                        <div>
+                            <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>">
+                                ← Voltar para empresas
+                            </a>
+
+                            <h2><?php echo esc($empresa_selecionada['nome']); ?></h2>
+                            <p><?php echo esc($empresa_selecionada['descricao']); ?></p>
+                        </div>
+
+                        <div class="mini-box">
+                            <span>Status</span>
+                            <strong><?php echo esc($empresa_selecionada['status']); ?></strong>
+                        </div>
+                    </section>
+
+                    <section class="metrics">
+                        <article class="metric">
+                            <span>Gasto</span>
+                            <strong><?php echo dinheiro($te['gasto']); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Alcance</span>
+                            <strong><?php echo numero($te['alcance']); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Campanhas</span>
+                            <strong><?php echo esc($te['campanhas']); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Anúncios</span>
+                            <strong><?php echo esc($te['anuncios']); ?></strong>
+                        </article>
+                    </section>
+
+                    <section class="grid">
+                        <?php foreach ($empresa_selecionada['campanhas'] as $campanha): ?>
+                            <?php $tc = totais_campanha($campanha); ?>
+
+                            <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>&campanha=<?php echo esc($campanha['slug']); ?>">
+                                <article class="card">
+                                    <div class="card-top">
+                                        <div class="avatar">PV</div>
+
+                                        <div>
+                                            <h2><?php echo esc($campanha['nome']); ?></h2>
+                                            <p>Campanha ID: <?php echo esc($campanha['id']); ?></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-metrics">
+                                        <div class="mini-box">
+                                            <span>Orçamento diário</span>
+                                            <strong><?php echo dinheiro($campanha['orcamento_diario']); ?></strong>
+                                        </div>
+
+                                        <div class="mini-box">
+                                            <span>Gasto</span>
+                                            <strong><?php echo dinheiro($tc['gasto']); ?></strong>
+                                        </div>
+
+                                        <div class="mini-box">
+                                            <span>Alcance</span>
+                                            <strong><?php echo numero($tc['alcance']); ?></strong>
+                                        </div>
+
+                                        <div class="mini-box">
+                                            <span>Anúncios</span>
+                                            <strong><?php echo esc($tc['anuncios']); ?></strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="open-label">Abrir anúncios da campanha</div>
+                                </article>
+                            </a>
+                        <?php endforeach; ?>
+                    </section>
+
+                <?php elseif ($empresa_selecionada && $campanha_selecionada): ?>
+
+                    <?php $tc = totais_campanha($campanha_selecionada); ?>
+
+                    <section class="heading">
+                        <div>
+                            <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>">
+                                ← Voltar para campanhas
+                            </a>
+
+                            <h2><?php echo esc($campanha_selecionada['nome']); ?></h2>
+                            <p>Campanha ID: <?php echo esc($campanha_selecionada['id']); ?></p>
+                        </div>
+
+                        <div class="mini-box">
+                            <span>Orçamento diário</span>
+                            <strong><?php echo dinheiro($campanha_selecionada['orcamento_diario']); ?></strong>
+                        </div>
+                    </section>
+
+                    <section class="metrics">
+                        <article class="metric">
+                            <span>Gasto da campanha</span>
+                            <strong><?php echo dinheiro($tc['gasto']); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Alcance</span>
+                            <strong><?php echo numero($tc['alcance']); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Impressões</span>
+                            <strong><?php echo numero($tc['impressoes']); ?></strong>
+                        </article>
+
+                        <article class="metric">
+                            <span>Anúncios</span>
+                            <strong><?php echo esc($tc['anuncios']); ?></strong>
+                        </article>
+                    </section>
+
+                    <div class="ads-title">
+                        <h3>Anúncios / Criativos</h3>
+                        <span><?php echo count($campanha_selecionada['anuncios']); ?> anúncio(s) nesta campanha</span>
+                    </div>
+
+                    <section class="ads-grid">
+                        <?php foreach ($campanha_selecionada['anuncios'] as $anuncio): ?>
+                            <?php
+                                $eficiencia = $anuncio['gasto'] > 0 ? round($anuncio['alcance'] / $anuncio['gasto']) : 0;
+                                $custo_mil_alcance = $anuncio['alcance'] > 0 ? ($anuncio['gasto'] / $anuncio['alcance']) * 1000 : 0;
+                                $frequencia = $anuncio['alcance'] > 0 ? $anuncio['impressoes'] / $anuncio['alcance'] : 0;
+                                $largura_alcance = max(($anuncio['alcance'] / $max_alcance) * 100, 3);
+                                $largura_gasto = max(($anuncio['gasto'] / $max_gasto) * 100, 3);
+                            ?>
+
+                            <article class="ad-card">
+                                <div class="ad-visual <?php echo esc($anuncio['plataforma']); ?>">
+                                    <span><?php echo esc(tipo_anuncio($anuncio['nome'])); ?></span>
+                                    <strong><?php echo esc(nome_plataforma($anuncio['plataforma'])); ?></strong>
+                                </div>
+
+                                <div class="ad-content">
+                                    <div class="ad-head">
+                                        <div>
+                                            <h3><?php echo esc($anuncio['nome']); ?></h3>
+                                            <p>Criativo ID: <?php echo esc($anuncio['id']); ?></p>
+                                            <p>Tempo de veiculação: conforme período selecionado</p>
+                                        </div>
+
+                                        <span class="rank">
+                                            #<?php echo isset($ranking[$anuncio['id']]) ? esc($ranking[$anuncio['id']]) : '-'; ?> alcance
+                                        </span>
+                                    </div>
+
+                                    <div class="ad-kpis">
+                                        <div class="ad-kpi">
+                                            <span>Gasto</span>
+                                            <strong><?php echo dinheiro($anuncio['gasto']); ?></strong>
+                                        </div>
+
+                                        <div class="ad-kpi">
+                                            <span>Alcance</span>
+                                            <strong><?php echo numero($anuncio['alcance']); ?></strong>
+                                        </div>
+
+                                        <div class="ad-kpi">
+                                            <span>Impressões</span>
+                                            <strong><?php echo numero($anuncio['impressoes']); ?></strong>
+                                        </div>
+
+                                        <div class="ad-kpi">
+                                            <span>Custo/1.000 alcance</span>
+                                            <strong><?php echo dinheiro($custo_mil_alcance); ?></strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="bar-list">
+                                        <div class="bar-row">
+                                            <span>Alcance</span>
+                                            <div class="bar-track">
+                                                <i class="bar-fill" style="width: <?php echo esc(number_format($largura_alcance, 2, '.', '')); ?>%;"></i>
+                                            </div>
+                                            <strong><?php echo numero($anuncio['alcance']); ?></strong>
+                                        </div>
+
+                                        <div class="bar-row">
+                                            <span>Gasto</span>
+                                            <div class="bar-track">
+                                                <i class="bar-fill spend" style="width: <?php echo esc(number_format($largura_gasto, 2, '.', '')); ?>%;"></i>
+                                            </div>
+                                            <strong><?php echo dinheiro($anuncio['gasto']); ?></strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="ad-insights">
+                                        <div class="ad-insight">
+                                            <span>Eficiência*</span>
+                                            <strong><?php echo numero($eficiencia); ?> alcances por real</strong>
+                                        </div>
+
+                                        <div class="ad-insight">
+                                            <span>Frequência</span>
+                                            <strong><?php echo esc(number_format($frequencia, 2, ',', '.')); ?>x</strong>
+                                        </div>
+
+                                        <div class="ad-insight">
+                                            <span>Plataforma</span>
+                                            <strong><?php echo esc(nome_plataforma($anuncio['plataforma'])); ?></strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="note">
+                                        * Quantidade de contas alcançadas para cada R$ 1,00 investido.
+                                    </div>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </section>
+
+                <?php endif; ?>
 
             <?php endif; ?>
         </div>
@@ -1448,46 +1848,45 @@ foreach ($ranks as $anuncio) {
 </html>
 '''
 
-(base / "index.php").write_text(php, encoding="utf-8")
+index_path = base / "index.php"
+index_path.write_text(php, encoding="utf-8")
 
-readme = """# Admin Dashboard - Código refeito do zero
+readme = """# Painel com cadastro de conta, admin e permissões
 
-Este pacote contém um `index.php` completo e limpo, refeito do zero em PHP + HTML.
+## Fluxo
 
-## Login
+USER cria conta -> ADMIN aprova -> ADMIN define perfil -> ADMIN designa empresas responsáveis.
+
+## Login admin inicial
 
 E-mail: kevinnikolas417@gmail.com
 Senha: 123456
 
-## Estrutura
-
-Login -> Empresas Ativas -> PARISVIU -> Campanhas -> Anúncios/Dashboards
-
 ## Como instalar
 
-1. Extraia este ZIP.
-2. Envie somente o arquivo `index.php` para a raiz do repositório GitHub.
-3. Faça commit na branch `main`.
-4. Aguarde o deploy da Hostinger.
+1. Envie o arquivo `index.php` para a raiz do repositório.
+2. Faça commit na branch `main`.
+3. A Hostinger fará o deploy pelo webhook.
 
-## Observações
+## Observação importante
 
-- Não use o código Python exibido pelo ChatGPT.
-- Não envie o ZIP como arquivo final do site.
-- Suba apenas o `index.php`.
-- Este arquivo evita funções modernas do PHP para reduzir risco de erro 500.
+O sistema cria automaticamente a pasta `data/` e o arquivo `data/users.json`.
+A hospedagem precisa permitir escrita na pasta onde está o `index.php`.
 """
 
 (base / "README.md").write_text(readme, encoding="utf-8")
 
-zip_path = Path("/mnt/data/admin_dashboard_refeito_do_zero.zip")
+zip_path = Path("/mnt/data/painel_cadastro_contas_admin_empresas.zip")
 if zip_path.exists():
     zip_path.unlink()
 
 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-    z.write(base / "index.php", arcname="index.php")
+    z.write(index_path, arcname="index.php")
     z.write(base / "README.md", arcname="README.md")
 
-print(f"Arquivo criado: {zip_path}")
-print(f"index.php: {base / 'index.php'}")
-print("Código refeito do zero e salvo apenas como PHP/HTML.")
+direct_path = Path("/mnt/data/index_painel_cadastro.php")
+direct_path.write_text(php, encoding="utf-8")
+
+print(f"Arquivo PHP direto: {direct_path}")
+print(f"ZIP criado: {zip_path}")
+print(f"Linhas: {len(php.splitlines())}")
