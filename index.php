@@ -1,24 +1,56 @@
 from pathlib import Path
 import zipfile
 
-php = """<?php
+php = r'''<?php
 session_start();
+
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 /*
 |--------------------------------------------------------------------------
-| PAINEL DE ACESSO - ADMIN / USUÁRIO / EMPRESAS
+| PAINEL COM API META ATIVA
 |--------------------------------------------------------------------------
 | Admin inicial:
 | E-mail: kevinnikolas417@gmail.com
 | Senha: 123456
 |
-| Fluxo:
-| 1. Usuário cria conta com e-mail e senha pessoal.
-| 2. Conta fica pendente.
-| 3. Admin aprova o usuário.
-| 4. Admin define se será admin ou usuário.
-| 5. Admin escolhe as empresas que o usuário poderá acessar.
-| 6. Usuário comum visualiza somente as empresas liberadas.
+| IMPORTANTE:
+| Para a API funcionar em tempo real, configure:
+|
+| 1. $META_ACCESS_TOKEN
+| 2. $META_AD_ACCOUNT_ID
+|
+| O token precisa ter permissão para ler campanhas e insights da conta de anúncios.
+|--------------------------------------------------------------------------
+*/
+
+/*
+|--------------------------------------------------------------------------
+| CONFIGURAÇÃO DA API META
+|--------------------------------------------------------------------------
+*/
+
+$META_API_VERSION = 'v25.0';
+$META_AD_ACCOUNT_ID = '9729633853761104';
+
+/*
+  RECOMENDADO:
+  Configure o token como variável de ambiente na hospedagem:
+  META_ACCESS_TOKEN=seu_token
+
+  ALTERNATIVA:
+  Cole o token abaixo, entre as aspas.
+*/
+$META_ACCESS_TOKEN = getenv('META_ACCESS_TOKEN');
+
+if (!$META_ACCESS_TOKEN) {
+    $META_ACCESS_TOKEN = '';
+}
+
+/*
+|--------------------------------------------------------------------------
+| CONFIGURAÇÃO LOCAL
 |--------------------------------------------------------------------------
 */
 
@@ -30,63 +62,27 @@ if (!is_dir($DATA_DIR)) {
 }
 
 $periodos = array(
-    '7' => array('nome' => 'Últimos 7 dias', 'inicio' => '1 de maio de 2026', 'fim' => '7 de maio de 2026'),
-    '15' => array('nome' => 'Últimos 15 dias', 'inicio' => '23 de abril de 2026', 'fim' => '7 de maio de 2026'),
-    '30' => array('nome' => 'Últimos 30 dias', 'inicio' => '8 de abril de 2026', 'fim' => '7 de maio de 2026')
+    '7' => array('nome' => 'Últimos 7 dias', 'dias' => 7),
+    '15' => array('nome' => 'Últimos 15 dias', 'dias' => 15),
+    '30' => array('nome' => 'Últimos 30 dias', 'dias' => 30),
+    '90' => array('nome' => 'Últimos 90 dias', 'dias' => 90)
 );
 
-$empresas = array(
+$empresas_base = array(
     array(
         'slug' => 'parisviu',
         'nome' => 'PARISVIU',
         'status' => 'Ativa',
-        'descricao' => 'Empresa ativa com campanhas e anúncios em veiculação.',
-        'campanhas' => array(
-            array(
-                'slug' => 'campanha-0010-nova-parisviu',
-                'id' => '120244842239960764',
-                'nome' => '[CAMPANHA0010] [NOVA PARISVIU] [RECONHECIMENTO]',
-                'orcamento_diario' => 20.00,
-                'anuncios' => array(
-                    array('id' => '120244842311700764', 'nome' => '[ADD001] [CARROSSEL]', 'plataforma' => 'facebook', 'gasto' => 1.81, 'alcance' => 1182, 'impressoes' => 1242),
-                    array('id' => '120244842239980764', 'nome' => '[ADD002] [CARROSSEL]', 'plataforma' => 'instagram', 'gasto' => 1.85, 'alcance' => 1456, 'impressoes' => 1456)
-                )
-            ),
-            array(
-                'slug' => 'campanha-0009-historia-parisviu',
-                'id' => '120244828429190764',
-                'nome' => '[CAMPANHA0009] [HISTORIA PARISVIU] [RECONHECIMENTO]',
-                'orcamento_diario' => 20.00,
-                'anuncios' => array(
-                    array('id' => '120244841964610764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'facebook', 'gasto' => 1.87, 'alcance' => 1053, 'impressoes' => 1163),
-                    array('id' => '120244841917760764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.13, 'alcance' => 1567, 'impressoes' => 1579)
-                )
-            ),
-            array(
-                'slug' => 'campanha-0008-ocul-prts-na-hora',
-                'id' => '120244828207010764',
-                'nome' => '[CAMPANHA0008] [ÓCUL PRTS NA HORA]',
-                'orcamento_diario' => 20.00,
-                'anuncios' => array(
-                    array('id' => '120244841775000764', 'nome' => '[ADD002] [VÍDEO]', 'plataforma' => 'facebook', 'gasto' => 2.18, 'alcance' => 1436, 'impressoes' => 1512),
-                    array('id' => '120244841168570764', 'nome' => '[ADD002] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.17, 'alcance' => 1593, 'impressoes' => 1593)
-                )
-            ),
-            array(
-                'slug' => 'campanha-0007-oculos-9990-micro',
-                'id' => '120244828194760764',
-                'nome' => '[CAMP0007] [ÓCULOS 99,90] [MICRO]',
-                'orcamento_diario' => 40.00,
-                'anuncios' => array(
-                    array('id' => '120244842110540764', 'nome' => '[ADD002] [VÍDEO]', 'plataforma' => 'facebook', 'gasto' => 2.15, 'alcance' => 1448, 'impressoes' => 1500),
-                    array('id' => '120244842071230764', 'nome' => '[ADD004] [CARROSSEL]', 'plataforma' => 'facebook', 'gasto' => 0.43, 'alcance' => 16, 'impressoes' => 18),
-                    array('id' => '120244842031390764', 'nome' => '[ADD003] [CARROSSEL]', 'plataforma' => 'instagram', 'gasto' => 0.20, 'alcance' => 6, 'impressoes' => 6),
-                    array('id' => '120244828194770764', 'nome' => '[ADD001] [VÍDEO]', 'plataforma' => 'instagram', 'gasto' => 2.40, 'alcance' => 1770, 'impressoes' => 1820)
-                )
-            )
-        )
+        'descricao' => 'Empresa conectada à conta de anúncios Meta.',
+        'ad_account_id' => $META_AD_ACCOUNT_ID
     )
 );
+
+/*
+|--------------------------------------------------------------------------
+| FUNÇÕES BÁSICAS
+|--------------------------------------------------------------------------
+*/
 
 function esc($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -109,22 +105,44 @@ function plataforma_nome($valor) {
         return 'Instagram';
     }
 
-    return ucfirst($valor);
-}
-
-function tipo_criativo($nome) {
-    $texto = strtoupper($nome);
-
-    if (strpos($texto, 'CARROSSEL') !== false) {
-        return 'CARROSSEL';
+    if ($valor == 'audience_network') {
+        return 'Audience Network';
     }
 
-    if (strpos($texto, 'VIDEO') !== false || strpos($texto, 'VÍDEO') !== false) {
-        return 'VÍDEO';
+    if ($valor == 'messenger') {
+        return 'Messenger';
     }
 
-    return 'CRIATIVO';
+    if ($valor == '' || $valor == null) {
+        return 'Meta';
+    }
+
+    return ucfirst(str_replace('_', ' ', $valor));
 }
+
+function cents_para_reais($valor) {
+    if ($valor === null || $valor === '') {
+        return 0;
+    }
+
+    return ((float)$valor) / 100;
+}
+
+function periodo_range($dias) {
+    $fim = date('Y-m-d');
+    $inicio = date('Y-m-d', strtotime('-' . ((int)$dias - 1) . ' days'));
+
+    return array(
+        'since' => $inicio,
+        'until' => $fim
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| FUNÇÕES DE USUÁRIOS
+|--------------------------------------------------------------------------
+*/
 
 function carregar_usuarios($arquivo) {
     if (!file_exists($arquivo)) {
@@ -191,83 +209,326 @@ function criar_admin_inicial($arquivo) {
     }
 }
 
-function buscar_empresa($empresas, $slug) {
-    foreach ($empresas as $empresa) {
-        if ($empresa['slug'] == $slug) {
-            return $empresa;
+/*
+|--------------------------------------------------------------------------
+| API META
+|--------------------------------------------------------------------------
+*/
+
+function meta_request($path, $params, $token, $version) {
+    if (!$token) {
+        return array(
+            'ok' => false,
+            'error' => 'Token da Meta não configurado.',
+            'data' => array()
+        );
+    }
+
+    $base_url = 'https://graph.facebook.com/' . $version . '/' . ltrim($path, '/');
+
+    $params['access_token'] = $token;
+    $url = $base_url . '?' . http_build_query($params);
+
+    $response = false;
+    $http_code = 0;
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+        $response = curl_exec($ch);
+        $http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (curl_errno($ch)) {
+            $erro = curl_error($ch);
+            curl_close($ch);
+
+            return array(
+                'ok' => false,
+                'error' => 'Erro cURL: ' . $erro,
+                'data' => array()
+            );
         }
+
+        curl_close($ch);
+    } else {
+        $response = @file_get_contents($url);
+        $http_code = $response ? 200 : 0;
     }
 
-    return null;
+    if (!$response) {
+        return array(
+            'ok' => false,
+            'error' => 'Não foi possível conectar à API da Meta.',
+            'data' => array()
+        );
+    }
+
+    $json = json_decode($response, true);
+
+    if (!is_array($json)) {
+        return array(
+            'ok' => false,
+            'error' => 'Resposta inválida da API da Meta.',
+            'data' => array()
+        );
+    }
+
+    if (isset($json['error'])) {
+        $msg = isset($json['error']['message']) ? $json['error']['message'] : 'Erro desconhecido da Meta.';
+
+        return array(
+            'ok' => false,
+            'error' => $msg,
+            'data' => array()
+        );
+    }
+
+    if ($http_code >= 400) {
+        return array(
+            'ok' => false,
+            'error' => 'Erro HTTP ' . $http_code . ' na API da Meta.',
+            'data' => array()
+        );
+    }
+
+    return array(
+        'ok' => true,
+        'error' => '',
+        'data' => isset($json['data']) ? $json['data'] : array(),
+        'raw' => $json
+    );
 }
 
-function buscar_campanha($campanhas, $slug) {
-    foreach ($campanhas as $campanha) {
-        if ($campanha['slug'] == $slug) {
-            return $campanha;
+function meta_paginated_request($path, $params, $token, $version) {
+    $primeira = meta_request($path, $params, $token, $version);
+
+    if (!$primeira['ok']) {
+        return $primeira;
+    }
+
+    $dados = $primeira['data'];
+    $raw = isset($primeira['raw']) ? $primeira['raw'] : array();
+
+    $next = isset($raw['paging']['next']) ? $raw['paging']['next'] : '';
+
+    while ($next) {
+        $response = false;
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $next);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $response = curl_exec($ch);
+            curl_close($ch);
+        } else {
+            $response = @file_get_contents($next);
         }
-    }
 
-    return null;
-}
+        if (!$response) {
+            break;
+        }
 
-function totais_campanha($campanha) {
-    $total = array('gasto' => 0, 'alcance' => 0, 'impressoes' => 0, 'anuncios' => 0);
+        $json = json_decode($response, true);
 
-    foreach ($campanha['anuncios'] as $anuncio) {
-        $total['gasto'] += $anuncio['gasto'];
-        $total['alcance'] += $anuncio['alcance'];
-        $total['impressoes'] += $anuncio['impressoes'];
-        $total['anuncios']++;
-    }
+        if (!is_array($json) || isset($json['error'])) {
+            break;
+        }
 
-    return $total;
-}
-
-function totais_empresa($empresa) {
-    $total = array('gasto' => 0, 'alcance' => 0, 'impressoes' => 0, 'campanhas' => 0, 'anuncios' => 0);
-
-    foreach ($empresa['campanhas'] as $campanha) {
-        $tc = totais_campanha($campanha);
-        $total['gasto'] += $tc['gasto'];
-        $total['alcance'] += $tc['alcance'];
-        $total['impressoes'] += $tc['impressoes'];
-        $total['campanhas']++;
-        $total['anuncios'] += $tc['anuncios'];
-    }
-
-    return $total;
-}
-
-function todos_anuncios($empresas) {
-    $lista = array();
-
-    foreach ($empresas as $empresa) {
-        foreach ($empresa['campanhas'] as $campanha) {
-            foreach ($campanha['anuncios'] as $anuncio) {
-                $lista[] = $anuncio;
+        if (isset($json['data']) && is_array($json['data'])) {
+            foreach ($json['data'] as $item) {
+                $dados[] = $item;
             }
         }
+
+        $next = isset($json['paging']['next']) ? $json['paging']['next'] : '';
     }
 
-    return $lista;
+    return array(
+        'ok' => true,
+        'error' => '',
+        'data' => $dados
+    );
 }
 
-function total_campanhas($empresas) {
-    $total = 0;
+function meta_dashboard_empresa($empresa_base, $periodo, $token, $version) {
+    $ad_account_id = $empresa_base['ad_account_id'];
+    $account_path = 'act_' . $ad_account_id;
 
-    foreach ($empresas as $empresa) {
-        $total += count($empresa['campanhas']);
+    $range = periodo_range($periodo['dias']);
+
+    $retorno = array(
+        'ok' => false,
+        'error' => '',
+        'empresa' => $empresa_base,
+        'campanhas' => array(),
+        'total' => array(
+            'gasto' => 0,
+            'alcance' => 0,
+            'impressoes' => 0,
+            'campanhas' => 0,
+            'anuncios' => 0
+        ),
+        'range' => $range
+    );
+
+    if (!$token) {
+        $retorno['error'] = 'Token da Meta não configurado. Configure META_ACCESS_TOKEN na hospedagem ou no topo do index.php.';
+        return $retorno;
     }
 
-    return $total;
+    $campanhas_res = meta_paginated_request(
+        $account_path . '/campaigns',
+        array(
+            'fields' => 'id,name,status,effective_status,daily_budget',
+            'limit' => 100
+        ),
+        $token,
+        $version
+    );
+
+    if (!$campanhas_res['ok']) {
+        $retorno['error'] = $campanhas_res['error'];
+        return $retorno;
+    }
+
+    $campanhas_meta = array();
+
+    foreach ($campanhas_res['data'] as $campanha) {
+        $status = isset($campanha['effective_status']) ? $campanha['effective_status'] : '';
+
+        if ($status == 'ACTIVE') {
+            $campanhas_meta[$campanha['id']] = array(
+                'id' => $campanha['id'],
+                'nome' => isset($campanha['name']) ? $campanha['name'] : 'Campanha sem nome',
+                'status' => $status,
+                'orcamento_diario' => isset($campanha['daily_budget']) ? cents_para_reais($campanha['daily_budget']) : 0,
+                'anuncios' => array()
+            );
+        }
+    }
+
+    $ads_res = meta_paginated_request(
+        $account_path . '/ads',
+        array(
+            'fields' => 'id,name,effective_status,created_time,campaign{id,name},adset{id,name}',
+            'limit' => 200
+        ),
+        $token,
+        $version
+    );
+
+    $ads_info = array();
+
+    if ($ads_res['ok']) {
+        foreach ($ads_res['data'] as $ad) {
+            $ads_info[$ad['id']] = $ad;
+        }
+    }
+
+    $insights_res = meta_paginated_request(
+        $account_path . '/insights',
+        array(
+            'fields' => 'campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,reach,impressions,frequency,date_start,date_stop',
+            'level' => 'ad',
+            'breakdowns' => 'publisher_platform',
+            'time_range' => json_encode($range),
+            'limit' => 500
+        ),
+        $token,
+        $version
+    );
+
+    if (!$insights_res['ok']) {
+        $retorno['error'] = $insights_res['error'];
+        return $retorno;
+    }
+
+    foreach ($insights_res['data'] as $linha) {
+        $campaign_id = isset($linha['campaign_id']) ? $linha['campaign_id'] : '';
+
+        if ($campaign_id == '') {
+            continue;
+        }
+
+        if (!isset($campanhas_meta[$campaign_id])) {
+            continue;
+        }
+
+        $ad_id = isset($linha['ad_id']) ? $linha['ad_id'] : '';
+        $plataforma = isset($linha['publisher_platform']) ? $linha['publisher_platform'] : 'meta';
+        $ad_key = $ad_id . '_' . $plataforma;
+
+        $criado_em = '';
+
+        if (isset($ads_info[$ad_id]) && isset($ads_info[$ad_id]['created_time'])) {
+            $criado_em = $ads_info[$ad_id]['created_time'];
+        }
+
+        $campanhas_meta[$campaign_id]['anuncios'][$ad_key] = array(
+            'id' => $ad_id,
+            'nome' => isset($linha['ad_name']) ? $linha['ad_name'] : 'Anúncio sem nome',
+            'conjunto' => isset($linha['adset_name']) ? $linha['adset_name'] : '',
+            'plataforma' => $plataforma,
+            'gasto' => isset($linha['spend']) ? (float)$linha['spend'] : 0,
+            'alcance' => isset($linha['reach']) ? (int)$linha['reach'] : 0,
+            'impressoes' => isset($linha['impressions']) ? (int)$linha['impressions'] : 0,
+            'frequencia' => isset($linha['frequency']) ? (float)$linha['frequency'] : 0,
+            'criado_em' => $criado_em
+        );
+    }
+
+    foreach ($campanhas_meta as $id => $campanha) {
+        $campanha_total = array(
+            'gasto' => 0,
+            'alcance' => 0,
+            'impressoes' => 0,
+            'anuncios' => 0
+        );
+
+        $anuncios_array = array();
+
+        foreach ($campanha['anuncios'] as $anuncio) {
+            $campanha_total['gasto'] += $anuncio['gasto'];
+            $campanha_total['alcance'] += $anuncio['alcance'];
+            $campanha_total['impressoes'] += $anuncio['impressoes'];
+            $campanha_total['anuncios']++;
+
+            $anuncios_array[] = $anuncio;
+        }
+
+        $campanha['anuncios'] = $anuncios_array;
+        $campanha['total'] = $campanha_total;
+
+        $retorno['campanhas'][] = $campanha;
+        $retorno['total']['gasto'] += $campanha_total['gasto'];
+        $retorno['total']['alcance'] += $campanha_total['alcance'];
+        $retorno['total']['impressoes'] += $campanha_total['impressoes'];
+        $retorno['total']['anuncios'] += $campanha_total['anuncios'];
+    }
+
+    $retorno['total']['campanhas'] = count($retorno['campanhas']);
+    $retorno['ok'] = true;
+
+    return $retorno;
 }
+
+/*
+|--------------------------------------------------------------------------
+| USUÁRIOS E SESSÃO
+|--------------------------------------------------------------------------
+*/
 
 criar_admin_inicial($USERS_FILE);
 $usuarios = carregar_usuarios($USERS_FILE);
 
-$mensagem = '';
 $erro = '';
+$mensagem = '';
 
 if (isset($_GET['logout'])) {
     session_destroy();
@@ -360,7 +621,14 @@ if ($logado && $is_admin && $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST
     }
 }
 
+/*
+|--------------------------------------------------------------------------
+| ROTAS
+|--------------------------------------------------------------------------
+*/
+
 $pagina = isset($_GET['pagina']) ? $_GET['pagina'] : 'login';
+
 $periodo_selecionado = isset($_GET['periodo']) ? $_GET['periodo'] : '7';
 
 if (!isset($periodos[$periodo_selecionado])) {
@@ -370,60 +638,47 @@ if (!isset($periodos[$periodo_selecionado])) {
 $periodo_atual = $periodos[$periodo_selecionado];
 
 $empresa_slug = isset($_GET['empresa']) ? $_GET['empresa'] : '';
-$campanha_slug = isset($_GET['campanha']) ? $_GET['campanha'] : '';
+$campanha_id = isset($_GET['campanha']) ? $_GET['campanha'] : '';
 
 $empresas_liberadas = array();
 
 if ($logado && $is_admin) {
-    $empresas_liberadas = $empresas;
+    $empresas_liberadas = $empresas_base;
 } elseif ($logado && $usuario_logado) {
-    foreach ($empresas as $empresa) {
+    foreach ($empresas_base as $empresa) {
         if (in_array($empresa['slug'], $usuario_logado['empresas'])) {
             $empresas_liberadas[] = $empresa;
         }
     }
 }
 
-$empresa_selecionada = $empresa_slug ? buscar_empresa($empresas_liberadas, $empresa_slug) : null;
-$campanha_selecionada = ($empresa_selecionada && $campanha_slug) ? buscar_campanha($empresa_selecionada['campanhas'], $campanha_slug) : null;
+$empresa_base_selecionada = null;
 
-$anuncios_geral = todos_anuncios($empresas);
-$max_alcance = 1;
-$max_gasto = 1;
-
-foreach ($anuncios_geral as $anuncio) {
-    if ($anuncio['alcance'] > $max_alcance) {
-        $max_alcance = $anuncio['alcance'];
-    }
-
-    if ($anuncio['gasto'] > $max_gasto) {
-        $max_gasto = $anuncio['gasto'];
-    }
+if ($empresa_slug != '') {
+    $empresa_base_selecionada = buscar_empresa($empresas_liberadas, $empresa_slug);
 }
 
-$ranking_lista = $anuncios_geral;
+$dashboard = null;
+$campanha_selecionada = null;
 
-usort($ranking_lista, function($a, $b) {
-    if ($a['alcance'] == $b['alcance']) {
-        return 0;
+if ($empresa_base_selecionada) {
+    $dashboard = meta_dashboard_empresa($empresa_base_selecionada, $periodo_atual, $META_ACCESS_TOKEN, $META_API_VERSION);
+
+    if ($dashboard['ok'] && $campanha_id != '') {
+        foreach ($dashboard['campanhas'] as $campanha) {
+            if ((string)$campanha['id'] == (string)$campanha_id) {
+                $campanha_selecionada = $campanha;
+                break;
+            }
+        }
     }
-
-    return ($a['alcance'] < $b['alcance']) ? 1 : -1;
-});
-
-$ranking = array();
-$posicao = 1;
-
-foreach ($ranking_lista as $anuncio) {
-    $ranking[$anuncio['id']] = $posicao;
-    $posicao++;
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Empresas</title>
+    <title>Painel Meta Ads</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
@@ -557,8 +812,9 @@ foreach ($ranking_lista as $anuncio) {
 
         .alert {
             border-radius: 14px;
-            padding: 10px 12px;
+            padding: 12px 14px;
             font-weight: 800;
+            margin-bottom: 14px;
         }
 
         .alert.error {
@@ -571,6 +827,12 @@ foreach ($ranking_lista as $anuncio) {
             color: var(--green);
             background: var(--green-bg);
             border: 1px solid #bbf7d0;
+        }
+
+        .alert.warning {
+            color: var(--warning);
+            background: var(--warning-bg);
+            border: 1px solid #fde68a;
         }
 
         header { padding: 18px 0 14px; }
@@ -1023,22 +1285,6 @@ foreach ($ranking_lista as $anuncio) {
             margin-right: 6px;
         }
 
-        .floating-top {
-            position: fixed;
-            right: 14px;
-            bottom: 14px;
-            z-index: 30;
-            width: 48px;
-            height: 48px;
-            border-radius: 999px;
-            display: grid;
-            place-items: center;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: #ffffff;
-            text-decoration: none;
-            font-weight: 900;
-        }
-
         @media (min-width: 680px) {
             header { padding-top: 30px; }
 
@@ -1173,10 +1419,10 @@ foreach ($ranking_lista as $anuncio) {
         <div class="shell">
             <section class="hero">
                 <div>
-                    <h1>Painel de Empresas</h1>
+                    <h1>Painel Meta Ads</h1>
                     <p>
                         <?php if ($is_admin): ?>
-                            Admin conectado. Você pode aprovar usuários, definir perfis e designar empresas.
+                            Admin conectado. A API da Meta é consultada a cada carregamento da página.
                         <?php else: ?>
                             Usuário conectado. Você visualiza somente as empresas liberadas pelo admin.
                         <?php endif; ?>
@@ -1195,8 +1441,8 @@ foreach ($ranking_lista as $anuncio) {
                     </div>
 
                     <div>
-                        <span>Período</span>
-                        <strong><?php echo esc($periodo_atual['nome']); ?></strong>
+                        <span>API</span>
+                        <strong><?php echo $META_ACCESS_TOKEN ? 'Meta ativa' : 'Token pendente'; ?></strong>
                     </div>
                 </div>
             </section>
@@ -1276,7 +1522,7 @@ foreach ($ranking_lista as $anuncio) {
                                 <div class="field">
                                     <label>Empresas responsáveis</label>
                                     <div class="checkbox-list">
-                                        <?php foreach ($empresas as $empresa_opcao): ?>
+                                        <?php foreach ($empresas_base as $empresa_opcao): ?>
                                             <?php $checked = in_array($empresa_opcao['slug'], $usuario_item['empresas']) ? 'checked' : ''; ?>
 
                                             <label class="checkbox-pill">
@@ -1303,12 +1549,12 @@ foreach ($ranking_lista as $anuncio) {
                             <?php
                                 $url_periodo = 'index.php?periodo=' . urlencode($chave_periodo);
 
-                                if ($empresa_selecionada) {
-                                    $url_periodo .= '&empresa=' . urlencode($empresa_selecionada['slug']);
+                                if ($empresa_base_selecionada) {
+                                    $url_periodo .= '&empresa=' . urlencode($empresa_base_selecionada['slug']);
                                 }
 
                                 if ($campanha_selecionada) {
-                                    $url_periodo .= '&campanha=' . urlencode($campanha_selecionada['slug']);
+                                    $url_periodo .= '&campanha=' . urlencode($campanha_selecionada['id']);
                                 }
 
                                 $classe = ($chave_periodo == $periodo_selecionado) ? 'active' : '';
@@ -1321,19 +1567,13 @@ foreach ($ranking_lista as $anuncio) {
                     </div>
                 </section>
 
-                <div class="period-chip">
-                    <?php echo esc($periodo_atual['nome']); ?>:
-                    <?php echo esc($periodo_atual['inicio']); ?> a
-                    <?php echo esc($periodo_atual['fim']); ?>
-                </div>
-
                 <?php if (count($empresas_liberadas) == 0): ?>
 
                     <div class="alert error">
                         Nenhuma empresa foi liberada para sua conta. Aguarde o admin designar uma empresa.
                     </div>
 
-                <?php elseif (!$empresa_selecionada): ?>
+                <?php elseif (!$empresa_base_selecionada): ?>
 
                     <section class="metrics">
                         <article class="metric">
@@ -1342,25 +1582,29 @@ foreach ($ranking_lista as $anuncio) {
                         </article>
 
                         <article class="metric">
-                            <span>Campanhas</span>
-                            <strong><?php echo total_campanhas($empresas_liberadas); ?></strong>
+                            <span>API</span>
+                            <strong><?php echo $META_ACCESS_TOKEN ? 'Ativa' : 'Pendente'; ?></strong>
                         </article>
 
                         <article class="metric">
-                            <span>Anúncios</span>
-                            <strong><?php echo count(todos_anuncios($empresas_liberadas)); ?></strong>
+                            <span>Conta Meta</span>
+                            <strong><?php echo esc($META_AD_ACCOUNT_ID); ?></strong>
                         </article>
 
                         <article class="metric">
-                            <span>Perfil</span>
-                            <strong><?php echo esc($usuario_logado['tipo']); ?></strong>
+                            <span>Período</span>
+                            <strong><?php echo esc($periodo_atual['nome']); ?></strong>
                         </article>
                     </section>
 
+                    <?php if (!$META_ACCESS_TOKEN): ?>
+                        <div class="alert warning">
+                            Configure o token da Meta no topo do arquivo ou como variável de ambiente META_ACCESS_TOKEN para ativar dados em tempo real.
+                        </div>
+                    <?php endif; ?>
+
                     <section class="grid">
                         <?php foreach ($empresas_liberadas as $empresa): ?>
-                            <?php $te = totais_empresa($empresa); ?>
-
                             <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa['slug']); ?>">
                                 <article class="card">
                                     <div class="card-top">
@@ -1375,23 +1619,13 @@ foreach ($ranking_lista as $anuncio) {
 
                                     <div class="card-metrics">
                                         <div class="mini-box">
-                                            <span>Campanhas</span>
-                                            <strong><?php echo numero($te['campanhas']); ?></strong>
+                                            <span>Conta Meta</span>
+                                            <strong><?php echo esc($empresa['ad_account_id']); ?></strong>
                                         </div>
 
                                         <div class="mini-box">
-                                            <span>Anúncios</span>
-                                            <strong><?php echo numero($te['anuncios']); ?></strong>
-                                        </div>
-
-                                        <div class="mini-box">
-                                            <span>Gasto</span>
-                                            <strong><?php echo dinheiro($te['gasto']); ?></strong>
-                                        </div>
-
-                                        <div class="mini-box">
-                                            <span>Alcance</span>
-                                            <strong><?php echo numero($te['alcance']); ?></strong>
+                                            <span>Atualização</span>
+                                            <strong>Tempo real</strong>
                                         </div>
                                     </div>
 
@@ -1401,95 +1635,108 @@ foreach ($ranking_lista as $anuncio) {
                         <?php endforeach; ?>
                     </section>
 
-                <?php elseif ($empresa_selecionada && !$campanha_selecionada): ?>
-
-                    <?php $te = totais_empresa($empresa_selecionada); ?>
+                <?php elseif ($empresa_base_selecionada && !$campanha_selecionada): ?>
 
                     <section class="heading">
                         <div>
                             <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>">← Voltar para empresas</a>
-                            <h2><?php echo esc($empresa_selecionada['nome']); ?></h2>
-                            <p><?php echo esc($empresa_selecionada['descricao']); ?></p>
+                            <h2><?php echo esc($empresa_base_selecionada['nome']); ?></h2>
+                            <p>Dados puxados diretamente da API da Meta no carregamento da página.</p>
                         </div>
 
                         <div class="mini-box">
-                            <span>Status</span>
-                            <strong><?php echo esc($empresa_selecionada['status']); ?></strong>
+                            <span>Conta Meta</span>
+                            <strong><?php echo esc($empresa_base_selecionada['ad_account_id']); ?></strong>
                         </div>
                     </section>
 
-                    <section class="metrics">
-                        <article class="metric">
-                            <span>Gasto</span>
-                            <strong><?php echo dinheiro($te['gasto']); ?></strong>
-                        </article>
+                    <?php if (!$dashboard || !$dashboard['ok']): ?>
+                        <div class="alert error">
+                            <?php echo esc($dashboard ? $dashboard['error'] : 'Não foi possível carregar os dados da Meta.'); ?>
+                        </div>
+                    <?php else: ?>
 
-                        <article class="metric">
-                            <span>Alcance</span>
-                            <strong><?php echo numero($te['alcance']); ?></strong>
-                        </article>
+                        <div class="period-chip">
+                            <?php echo esc($periodo_atual['nome']); ?>:
+                            <?php echo esc($dashboard['range']['since']); ?> a <?php echo esc($dashboard['range']['until']); ?>
+                        </div>
 
-                        <article class="metric">
-                            <span>Campanhas</span>
-                            <strong><?php echo numero($te['campanhas']); ?></strong>
-                        </article>
+                        <section class="metrics">
+                            <article class="metric">
+                                <span>Gasto</span>
+                                <strong><?php echo dinheiro($dashboard['total']['gasto']); ?></strong>
+                            </article>
 
-                        <article class="metric">
-                            <span>Anúncios</span>
-                            <strong><?php echo numero($te['anuncios']); ?></strong>
-                        </article>
-                    </section>
+                            <article class="metric">
+                                <span>Alcance</span>
+                                <strong><?php echo numero($dashboard['total']['alcance']); ?></strong>
+                            </article>
 
-                    <section class="grid">
-                        <?php foreach ($empresa_selecionada['campanhas'] as $campanha): ?>
-                            <?php $tc = totais_campanha($campanha); ?>
+                            <article class="metric">
+                                <span>Campanhas ativas</span>
+                                <strong><?php echo numero($dashboard['total']['campanhas']); ?></strong>
+                            </article>
 
-                            <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>&campanha=<?php echo esc($campanha['slug']); ?>">
-                                <article class="card">
-                                    <div class="card-top">
-                                        <div class="avatar">PV</div>
+                            <article class="metric">
+                                <span>Anúncios</span>
+                                <strong><?php echo numero($dashboard['total']['anuncios']); ?></strong>
+                            </article>
+                        </section>
 
-                                        <div>
-                                            <h2><?php echo esc($campanha['nome']); ?></h2>
-                                            <p>Campanha ID: <?php echo esc($campanha['id']); ?></p>
+                        <?php if (count($dashboard['campanhas']) == 0): ?>
+                            <div class="alert warning">
+                                Nenhuma campanha ativa encontrada na API da Meta para este período.
+                            </div>
+                        <?php endif; ?>
+
+                        <section class="grid">
+                            <?php foreach ($dashboard['campanhas'] as $campanha): ?>
+                                <a class="card-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_base_selecionada['slug']); ?>&campanha=<?php echo esc($campanha['id']); ?>">
+                                    <article class="card">
+                                        <div class="card-top">
+                                            <div class="avatar">PV</div>
+
+                                            <div>
+                                                <h2><?php echo esc($campanha['nome']); ?></h2>
+                                                <p>Campanha ID: <?php echo esc($campanha['id']); ?></p>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="card-metrics">
-                                        <div class="mini-box">
-                                            <span>Orçamento diário</span>
-                                            <strong><?php echo dinheiro($campanha['orcamento_diario']); ?></strong>
+                                        <div class="card-metrics">
+                                            <div class="mini-box">
+                                                <span>Orçamento diário</span>
+                                                <strong><?php echo dinheiro($campanha['orcamento_diario']); ?></strong>
+                                            </div>
+
+                                            <div class="mini-box">
+                                                <span>Gasto</span>
+                                                <strong><?php echo dinheiro($campanha['total']['gasto']); ?></strong>
+                                            </div>
+
+                                            <div class="mini-box">
+                                                <span>Alcance</span>
+                                                <strong><?php echo numero($campanha['total']['alcance']); ?></strong>
+                                            </div>
+
+                                            <div class="mini-box">
+                                                <span>Anúncios</span>
+                                                <strong><?php echo numero($campanha['total']['anuncios']); ?></strong>
+                                            </div>
                                         </div>
 
-                                        <div class="mini-box">
-                                            <span>Gasto</span>
-                                            <strong><?php echo dinheiro($tc['gasto']); ?></strong>
-                                        </div>
+                                        <div class="open-label">Abrir anúncios</div>
+                                    </article>
+                                </a>
+                            <?php endforeach; ?>
+                        </section>
 
-                                        <div class="mini-box">
-                                            <span>Alcance</span>
-                                            <strong><?php echo numero($tc['alcance']); ?></strong>
-                                        </div>
+                    <?php endif; ?>
 
-                                        <div class="mini-box">
-                                            <span>Anúncios</span>
-                                            <strong><?php echo numero($tc['anuncios']); ?></strong>
-                                        </div>
-                                    </div>
-
-                                    <div class="open-label">Abrir anúncios da campanha</div>
-                                </article>
-                            </a>
-                        <?php endforeach; ?>
-                    </section>
-
-                <?php elseif ($empresa_selecionada && $campanha_selecionada): ?>
-
-                    <?php $tc = totais_campanha($campanha_selecionada); ?>
+                <?php elseif ($empresa_base_selecionada && $campanha_selecionada): ?>
 
                     <section class="heading">
                         <div>
-                            <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_selecionada['slug']); ?>">← Voltar para campanhas</a>
+                            <a class="back-link" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>&empresa=<?php echo esc($empresa_base_selecionada['slug']); ?>">← Voltar para campanhas</a>
                             <h2><?php echo esc($campanha_selecionada['nome']); ?></h2>
                             <p>Campanha ID: <?php echo esc($campanha_selecionada['id']); ?></p>
                         </div>
@@ -1503,22 +1750,22 @@ foreach ($ranking_lista as $anuncio) {
                     <section class="metrics">
                         <article class="metric">
                             <span>Gasto</span>
-                            <strong><?php echo dinheiro($tc['gasto']); ?></strong>
+                            <strong><?php echo dinheiro($campanha_selecionada['total']['gasto']); ?></strong>
                         </article>
 
                         <article class="metric">
                             <span>Alcance</span>
-                            <strong><?php echo numero($tc['alcance']); ?></strong>
+                            <strong><?php echo numero($campanha_selecionada['total']['alcance']); ?></strong>
                         </article>
 
                         <article class="metric">
                             <span>Impressões</span>
-                            <strong><?php echo numero($tc['impressoes']); ?></strong>
+                            <strong><?php echo numero($campanha_selecionada['total']['impressoes']); ?></strong>
                         </article>
 
                         <article class="metric">
                             <span>Anúncios</span>
-                            <strong><?php echo numero($tc['anuncios']); ?></strong>
+                            <strong><?php echo numero($campanha_selecionada['total']['anuncios']); ?></strong>
                         </article>
                     </section>
 
@@ -1532,9 +1779,8 @@ foreach ($ranking_lista as $anuncio) {
                             <?php
                                 $eficiencia = $anuncio['gasto'] > 0 ? round($anuncio['alcance'] / $anuncio['gasto']) : 0;
                                 $custo_mil = $anuncio['alcance'] > 0 ? ($anuncio['gasto'] / $anuncio['alcance']) * 1000 : 0;
-                                $frequencia = $anuncio['alcance'] > 0 ? $anuncio['impressoes'] / $anuncio['alcance'] : 0;
-                                $largura_alcance = max(($anuncio['alcance'] / $max_alcance) * 100, 3);
-                                $largura_gasto = max(($anuncio['gasto'] / $max_gasto) * 100, 3);
+                                $largura_alcance = max(($anuncio['alcance'] / max($campanha_selecionada['total']['alcance'], 1)) * 100, 3);
+                                $largura_gasto = max(($anuncio['gasto'] / max($campanha_selecionada['total']['gasto'], 1)) * 100, 3);
                             ?>
 
                             <article class="ad-card">
@@ -1548,11 +1794,12 @@ foreach ($ranking_lista as $anuncio) {
                                         <div>
                                             <h3><?php echo esc($anuncio['nome']); ?></h3>
                                             <p>Criativo ID: <?php echo esc($anuncio['id']); ?></p>
-                                            <p>Tempo de veiculação: conforme período selecionado</p>
+                                            <p>Conjunto: <?php echo esc($anuncio['conjunto']); ?></p>
+                                            <p>Criado em: <?php echo esc($anuncio['criado_em']); ?></p>
                                         </div>
 
                                         <span class="rank">
-                                            #<?php echo isset($ranking[$anuncio['id']]) ? esc($ranking[$anuncio['id']]) : '-'; ?> alcance
+                                            Plataforma: <?php echo esc(plataforma_nome($anuncio['plataforma'])); ?>
                                         </span>
                                     </div>
 
@@ -1604,7 +1851,7 @@ foreach ($ranking_lista as $anuncio) {
 
                                         <div class="ad-insight">
                                             <span>Frequência</span>
-                                            <strong><?php echo esc(number_format($frequencia, 2, ',', '.')); ?>x</strong>
+                                            <strong><?php echo esc(number_format($anuncio['frequencia'], 2, ',', '.')); ?>x</strong>
                                         </div>
 
                                         <div class="ad-insight">
@@ -1614,7 +1861,7 @@ foreach ($ranking_lista as $anuncio) {
                                     </div>
 
                                     <div class="note">
-                                        * Quantidade de contas alcançadas para cada R$ 1,00 investido.
+                                        * Dados carregados diretamente da API da Meta no momento da abertura da página.
                                     </div>
                                 </div>
                             </article>
@@ -1627,34 +1874,46 @@ foreach ($ranking_lista as $anuncio) {
         </div>
     </main>
 
-    <a class="floating-top" href="index.php?periodo=<?php echo esc($periodo_selecionado); ?>">↑</a>
-
 <?php endif; ?>
 
 </body>
 </html>
-"""
+'''
 
-# Validate no Python markers and starts with PHP
-for marker in ["from pathlib import Path", "import zipfile", "import shutil", "php = r'''", "Path("]:
+# Validate
+for marker in ["from pathlib import Path", "import zipfile", "shutil", "python_user_visible", "php = r'''"]:
     if marker in php:
         raise ValueError(f"Marcador proibido encontrado: {marker}")
 
 if not php.startswith("<?php"):
     raise ValueError("Arquivo não começa com <?php")
 
-out = Path("/mnt/data/index_reescrito_do_zero.php")
+out = Path("/mnt/data/index_meta_api_tempo_real.php")
 out.write_text(php, encoding="utf-8")
 
-zip_path = Path("/mnt/data/index_reescrito_do_zero.zip")
+zip_path = Path("/mnt/data/index_meta_api_tempo_real.zip")
 if zip_path.exists():
     zip_path.unlink()
 
 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
     z.write(out, arcname="index.php")
-    z.writestr("README.txt", "Arquivo PHP reescrito do zero. Suba o index.php na raiz do GitHub. Login admin: kevinnikolas417@gmail.com / 123456")
+    z.writestr("README.txt", """PAINEL META API TEMPO REAL
 
-print("Arquivo criado:", out)
+1. Suba o index.php para a raiz do GitHub.
+2. Configure o token da Meta:
+   - Preferencial: variável de ambiente META_ACCESS_TOKEN
+   - Alternativa: cole o token na variável $META_ACCESS_TOKEN no topo do arquivo.
+3. Conta de anúncios configurada:
+   9729633853761104
+
+Login admin inicial:
+E-mail: kevinnikolas417@gmail.com
+Senha: 123456
+
+O sistema consulta a API da Meta a cada carregamento da página.
+""")
+
+print("Arquivo PHP criado:", out)
 print("ZIP criado:", zip_path)
 print("Linhas:", len(php.splitlines()))
 print("Começa com:", php[:5])
